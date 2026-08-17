@@ -4,7 +4,7 @@ spring:
 
   datasource:
 
-    url: jdbc:postgresql://localhost:5432/gestion_scolaire_db
+    url: ${DATABASE_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gestion_scolaire_db}}
 
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:}
