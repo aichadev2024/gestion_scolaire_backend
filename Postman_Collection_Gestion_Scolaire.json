@@ -1,0 +1,920 @@
+{
+	"info": {
+		"_postman_id": "b3e3f6b8-1e40-faaa-da6f-2c17e0566899",
+		"name": "Gestion Scolaire API",
+		"description": "Collection Postman complète pour tester l'API de la Gestion Scolaire (Authentification, Niveaux, Classes, Enseignants, Inscription des élèves, Frais Scolaires, Paiements et Bulletins/Notes).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentification",
+			"item": [
+				{
+					"name": "Enregistrer Premier Admin",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@school.com\",\n  \"motDePasse\": \"admin123\",\n  \"role\": \"ADMIN\",\n  \"profil\": {\n    \"prenom\": \"Super\",\n    \"nom\": \"Admin\",\n    \"telephone\": \"+22501020304\",\n    \"genre\": \"M\",\n    \"dateNaissance\": \"1990-01-01\",\n    \"adresse\": \"Abidjan, Côte d'Ivoire\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register-first-admin",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register-first-admin"
+							]
+						},
+						"description": "Crée le tout premier administrateur dans le système. Ne fonctionne que si aucun admin n'existe."
+					},
+					"response": []
+				},
+				{
+					"name": "Connexion (Login)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+									"    console.log(\"Token JWT enregistré avec succès !\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@school.com\",\n  \"motDePasse\": \"admin123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "S'authentifier pour récupérer le token JWT et le stocker automatiquement dans la variable de collection."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Configuration (Niveaux & Classes)",
+			"item": [
+				{
+					"name": "Créer un Niveau",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nom\": \"Primaire\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/niveaux",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"niveaux"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Lister les Niveaux",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/niveaux",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"niveaux"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Créer Enseignant (Prof Principal)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"biographie\": \"Enseignant de Mathématiques chevronné.\",\n  \"profil\": {\n    \"prenom\": \"Kouamé\",\n    \"nom\": \"Konan\",\n    \"telephone\": \"+22507080901\",\n    \"genre\": \"M\",\n    \"dateNaissance\": \"1985-06-20\",\n    \"adresse\": \"Yopougon, Abidjan\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/enseignants",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"enseignants"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Créer une Classe",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nom\": \"CM2-A\",\n  \"niveauId\": 2,\n  \"enseignantPrincipalId\": 1,\n  \"anneeScolaire\": \"2026/2027\",\n  \"capaciteMax\": 35\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/classes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"classes"
+							]
+						},
+						"description": "Crée une classe CM2-A liée au niveau d'ID 2 (Primaire) et à l'enseignant d'ID 1."
+					},
+					"response": []
+				},
+				{
+					"name": "Lister toutes les Classes",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/classes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"classes"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Matières & Assignations",
+			"item": [
+				{
+					"name": "Créer une Matière (Maths)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nom\": \"Mathématiques\",\n  \"code\": \"MATH-CM2\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/matieres",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"matieres"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assigner Matière à la Classe",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"classeId\": 1,\n  \"matiereId\": 1,\n  \"enseignantId\": 1,\n  \"coefficient\": 4.0\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/classes-matieres",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"classes-matieres"
+							]
+						},
+						"description": "Assigne la matière (MATH-CM2 d'ID 1) à la classe (CM2-A d'ID 1) dispensée par l'enseignant d'ID 1 avec un coefficient de 4."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Utilisateurs & Comptes",
+			"item": [
+				{
+					"name": "Créer Compte Parent",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"parent.durand@email.com\",\n  \"motDePasse\": \"parent123\",\n  \"role\": \"PARENT\",\n  \"profil\": {\n    \"prenom\": \"Marc\",\n    \"nom\": \"Durand\",\n    \"telephone\": \"+22505050505\",\n    \"genre\": \"M\",\n    \"dateNaissance\": \"1980-04-12\",\n    \"adresse\": \"Cocody, Abidjan\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/utilisateurs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"utilisateurs"
+							]
+						},
+						"description": "Crée le compte utilisateur pour le parent. Attention: en base PostgreSQL, liez le profil_id généré à la table parents si nécessaire pour le relier à l'élève."
+					},
+					"response": []
+				},
+				{
+					"name": "Créer Compte Comptable",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"comptable@school.com\",\n  \"motDePasse\": \"compta123\",\n  \"role\": \"COMPTABLE\",\n  \"profil\": {\n    \"prenom\": \"Alice\",\n    \"nom\": \"Yao\",\n    \"telephone\": \"+22506060606\",\n    \"genre\": \"F\",\n    \"dateNaissance\": \"1988-12-05\",\n    \"adresse\": \"Marcory, Abidjan\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/utilisateurs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"utilisateurs"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Inscriptions (Élèves)",
+			"item": [
+				{
+					"name": "Inscrire un Élève (sans parent)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"profil\": {\n    \"prenom\": \"Julien\",\n    \"nom\": \"Durand\",\n    \"telephone\": \"+22501010101\",\n    \"genre\": \"M\",\n    \"dateNaissance\": \"2015-10-10\",\n    \"adresse\": \"Cocody, Abidjan\"\n  },\n  \"classeId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/eleves",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"eleves"
+							]
+						},
+						"description": "Inscrit un élève dans la classe CM2-A (ID 1) sans renseigner d'ID de parent pour le moment."
+					},
+					"response": []
+				},
+				{
+					"name": "Inscrire un Élève (avec parent ID)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"profil\": {\n    \"prenom\": \"Paul\",\n    \"nom\": \"Durand\",\n    \"telephone\": \"+22501010102\",\n    \"genre\": \"M\",\n    \"dateNaissance\": \"2016-02-14\",\n    \"adresse\": \"Cocody, Abidjan\"\n  },\n  \"parentId\": 1,\n  \"classeId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/eleves",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"eleves"
+							]
+						},
+						"description": "Inscrit un élève lié au parent d'ID 1 dans la classe d'ID 1."
+					},
+					"response": []
+				},
+				{
+					"name": "Lister tous les Élèves",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/eleves",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"eleves"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Frais de Scolarité & Paiements",
+			"item": [
+				{
+					"name": "Créer Frais de Scolarité (Inscription)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"classeId\": 1,\n  \"titre\": \"Droits d'inscription CM2-A\",\n  \"montant\": 50000.0,\n  \"dateEcheance\": \"2026-09-10\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/frais-scolarite",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"frais-scolarite"
+							]
+						},
+						"description": "Crée un frais pour la classe d'ID 1 (CM2-A) de 50 000 FCFA arrivant à échéance le 10 septembre 2026."
+					},
+					"response": []
+				},
+				{
+					"name": "Créer Frais de Scolarité (Scolarité Annuelle)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"classeId\": 1,\n  \"titre\": \"Scolarité 1er Trimestre CM2-A\",\n  \"montant\": 150000.0,\n  \"dateEcheance\": \"2026-11-30\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/frais-scolarite",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"frais-scolarite"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Lister les Frais par Classe",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/frais-scolarite/classe/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"frais-scolarite",
+								"classe",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Enregistrer un Paiement",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"eleveId\": 1,\n  \"fraisId\": 1,\n  \"montantPaye\": 50000.0,\n  \"modePaiement\": \"MOBILE_MONEY\",\n  \"referenceTransaction\": \"MPESA-87364-839\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/paiements",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"paiements"
+							]
+						},
+						"description": "Enregistre un paiement de 50 000 FCFA pour l'élève d'ID 1 concernant les droits d'inscription d'ID 1."
+					},
+					"response": []
+				},
+				{
+					"name": "Consulter le Solde Restant d'un Élève",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/paiements/eleve/1/solde",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"paiements",
+								"eleve",
+								"1",
+								"solde"
+							]
+						},
+						"description": "Calcule automatiquement la différence entre la somme de tous les frais scolaires de la classe de l'élève et la somme de tous ses paiements."
+					},
+					"response": []
+				},
+				{
+					"name": "Lister les Paiements d'un Élève",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/paiements/eleve/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"paiements",
+								"eleve",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Télécharger Reçu de Paiement PDF",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/paiements/recu/REC-METTRE_LE_NUMERO/pdf",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"paiements",
+								"recu",
+								"REC-METTRE_LE_NUMERO",
+								"pdf"
+							]
+						},
+						"description": "Télécharge un fichier PDF généré à la volée représentant le reçu du paiement."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Pédagogie (Notes & Présences)",
+			"item": [
+				{
+					"name": "Enregistrer une Note",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"eleveId\": 1,\n  \"classeMatiereId\": 1,\n  \"periode\": \"TRIMESTRE_1\",\n  \"typeEvaluation\": \"DEVOIR\",\n  \"valeur\": 16.5,\n  \"noteMax\": 20.0,\n  \"appreciation\": \"Excellent travail !\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/notes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Moyenne Générale d'un Élève",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/notes/eleve/1/moyenne?periode=TRIMESTRE_1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notes",
+								"eleve",
+								"1",
+								"moyenne"
+							],
+							"query": [
+								{
+									"key": "periode",
+									"value": "TRIMESTRE_1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Enregistrer une Présence / Absence",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{jwt_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"eleveId\": 1,\n  \"classeMatiereId\": 1,\n  \"date\": \"2026-07-30\",\n  \"statut\": \"ABSENT\",\n  \"estJustifie\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/presences",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"presences"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8089",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

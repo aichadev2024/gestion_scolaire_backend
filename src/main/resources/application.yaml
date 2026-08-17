@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: gestion_scolaire_backend
+
+  datasource:
+
+    url: jdbc:postgresql://localhost:5432/gestion_scolaire_db
+
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      # L'option "update" crée ou met à jour automatiquement les tables selon les entités Java JPA.
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Configuration de l'email via Brevo SMTP (utilisant des variables d'environnement avec valeurs par défaut)
+  mail:
+    host: ${SMTP_HOST:smtp-relay.brevo.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Configuration du port de l'application backend
+server:
+  port: ${PORT:8089}
+
+jwt:
+  secret: ${JWT_SECRET:gestion-scolaire-jwt-secret-key-2026-changez-en-production}
+  expiration-ms: 86400000
+
+# URL du frontend (utilisée dans les liens de réinitialisation)
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  password-reset-token-expiry-minutes: 30
