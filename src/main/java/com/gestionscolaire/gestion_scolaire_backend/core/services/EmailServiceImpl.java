@@ -21,7 +21,7 @@ public class EmailServiceImpl implements EmailService {
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
 
-    @Value("${spring.mail.username:diarrassoubaa505@gmail.com}")
+    @Value("${spring.mail.username:${app.mail.sender:netaa.ecole.mali@gmail.com}}")
     private String fromEmail;
 
     @Override
@@ -124,7 +124,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendSubscriptionWarningEmail(com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etab, long joursRestants) {
         String recipient = (etab.getEmailContact() != null && !etab.getEmailContact().isBlank()) 
                 ? etab.getEmailContact() 
-                : "diarrassoubaa505@gmail.com";
+                : "netaa.ecole.mali@gmail.com";
 
         String subject = "⚠️ ALERTE ABONNEMENT : Expiration dans " + joursRestants + " jours (" + etab.getNom() + ")";
         String formattedDate = etab.getDateExpirationAbonnement() != null 
@@ -160,8 +160,8 @@ public class EmailServiceImpl implements EmailService {
         logger.info("⚠️ [ABONNEMENT] Envoi de l'alerte d'expiration pour l'établissement [{}] à [{}]", etab.getNom(), recipient);
         sendMailInternal(recipient, subject, htmlBody);
         
-        if (!"diarrassoubaa505@gmail.com".equalsIgnoreCase(recipient)) {
-            sendMailInternal("diarrassoubaa505@gmail.com", "[SUPER-ADMIN] Alerte Expiration Écoles : " + etab.getNom(), htmlBody);
+        if (!"netaa.ecole.mali@gmail.com".equalsIgnoreCase(recipient)) {
+            sendMailInternal("netaa.ecole.mali@gmail.com", "[SUPER-ADMIN] Alerte Expiration Écoles : " + etab.getNom(), htmlBody);
         }
     }
 
@@ -172,9 +172,9 @@ public class EmailServiceImpl implements EmailService {
         // Priority 1: Send via Brevo REST API v3 using BREVO_API_KEY
         if (brevoApiKey != null && !brevoApiKey.isBlank()) {
             try {
-                String senderEmail = (fromEmail != null && !fromEmail.isBlank() && fromEmail.contains("@") && !fromEmail.contains("netaa-ecole.ml")) 
+                String senderEmail = (fromEmail != null && !fromEmail.isBlank() && fromEmail.contains("@")) 
                         ? fromEmail 
-                        : "diarrassoubaa505@gmail.com";
+                        : "netaa.ecole.mali@gmail.com";
 
                 String jsonPayload = """
                     {
