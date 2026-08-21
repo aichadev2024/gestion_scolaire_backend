@@ -19,9 +19,14 @@ import java.util.Map;
 public class EtablissementController {
 
     private final EtablissementService etablissementService;
+    private final com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.RecuEtablissementPdfService recuEtablissementPdfService;
 
-    public EtablissementController(EtablissementService etablissementService) {
+    public EtablissementController(
+            EtablissementService etablissementService,
+            com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.RecuEtablissementPdfService recuEtablissementPdfService
+    ) {
         this.etablissementService = etablissementService;
+        this.recuEtablissementPdfService = recuEtablissementPdfService;
     }
 
     @PostMapping
@@ -37,6 +42,15 @@ public class EtablissementController {
     @GetMapping("/{id}")
     public ResponseEntity<EtablissementResponse> obtenirParId(@PathVariable Long id) {
         return ResponseEntity.ok(etablissementService.obtenirParId(id));
+    }
+
+    @GetMapping("/{id}/recu-pdf")
+    public ResponseEntity<byte[]> telechargerRecuPdf(@PathVariable Long id) {
+        byte[] pdfBytes = recuEtablissementPdfService.genererRecuAbonnementPdf(id);
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=Recu_Abonnement_Etablissement_" + id + ".pdf")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 
     @PatchMapping("/{id}/statut")

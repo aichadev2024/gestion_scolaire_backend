@@ -165,10 +165,59 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendEtablissementCreatedWithPdf(com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etab, String adminEmail, String adminPassword, byte[] pdfBytes) {
+        String recipient = (adminEmail != null && !adminEmail.isBlank()) 
+                ? adminEmail 
+                : (etab.getEmailContact() != null ? etab.getEmailContact() : "netaa.ecole.mali@gmail.com");
+
+        String subject = "🎉 Activation Netaa École — Attestation & Reçu : " + etab.getNom();
+        String formattedDate = etab.getDateExpirationAbonnement() != null 
+                ? etab.getDateExpirationAbonnement().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) 
+                : "1 An";
+
+        String htmlBody = """
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #1B365D; border-radius: 12px; background-color: #ffffff;">
+                <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #1B365D;">
+                    <h2 style="color: #1B365D; margin: 0;">🏛️ Netaa École — Activation d'Établissement</h2>
+                    <p style="color: #d97706; font-weight: bold; margin-top: 5px;">Attestation d'Inscription & Reçu Officiel</p>
+                </div>
+                <div style="padding: 20px 0;">
+                    <p style="font-size: 16px; color: #333333;">Félicitations,</p>
+                    <p style="font-size: 15px; color: #555555; line-height: 1.6;">
+                        L'établissement <strong>%s</strong> (Code : <code>%s</code>) a été enregistré et activé sur Netaa École.
+                    </p>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <h4 style="color: #1B365D; margin-top: 0;">🔑 Identifiants d'Accès Administrateur :</h4>
+                        <p style="margin: 5px 0;"><strong>Identifiant / Email :</strong> %s</p>
+                        <p style="margin: 5px 0;"><strong>Mot de passe initial :</strong> <code>%s</code></p>
+                        <p style="margin: 5px 0;"><strong>Plan Souscrit :</strong> Plan %s (Valable jusqu'au %s)</p>
+                    </div>
+                    <p style="font-size: 14px; color: #64748b;">
+                        📄 <strong>Reçu de Paiement Joint :</strong> L'attestation officielle et le reçu d'abonnement au format PDF est joint à cet e-mail pour vos archives et impression.
+                    </p>
+                    <div style="text-align: center; margin-top: 25px;">
+                        <a href="%s" style="background: #1B365D; color: #ffffff; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block;">Connexion Espace Admin</a>
+                    </div>
+                </div>
+                <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #94a3b8;">
+                    &copy; 2026 Netaa École — République du Mali. Tous droits réservés.
+                </div>
+            </div>
+            """.formatted(etab.getNom(), etab.getCode(), recipient, adminPassword, etab.getPlanTarifaire(), formattedDate, frontendUrl + "/login");
+
+        logger.info("🎉 [ÉTABLISSEMENT] Envoi du reçu PDF et identifiants pour [{}] à [{}]", etab.getNom(), recipient);
+        sendMailInternalWithAttachment(recipient, subject, htmlBody, pdfBytes, "Recu_Abonnement_" + etab.getCode() + ".pdf");
+    }
+
     @Value("${BREVO_API_KEY:${brevo.api-key:}}")
     private String brevoApiKey;
 
     private void sendMailInternal(String to, String subject, String htmlContent) {
+        sendMailInternalWithAttachment(to, subject, htmlContent, null, null);
+    }
+
+    private void sendMailInternalWithAttachment(String to, String subject, String htmlContent, byte[] attachmentBytes, String attachmentName) {
         // Priority 1: Send via Brevo REST API v3 using BREVO_API_KEY
         if (brevoApiKey != null && !brevoApiKey.isBlank()) {
             try {
@@ -176,18 +225,30 @@ public class EmailServiceImpl implements EmailService {
                         ? fromEmail 
                         : "netaa.ecole.mali@gmail.com";
 
+                String attachmentJson = "";
+                if (attachmentBytes != null && attachmentBytes.length > 0 && attachmentName != null) {
+                    String base64Data = java.util.Base64.getEncoder().encodeToString(attachmentBytes);
+                    attachmentJson = """
+                      ,
+                      "attachment": [
+                        { "name": "%s", "content": "%s" }
+                      ]
+                    """.formatted(attachmentName, base64Data);
+                }
+
                 String jsonPayload = """
                     {
                       "sender": { "name": "Netaa École", "email": "%s" },
                       "to": [ { "email": "%s" } ],
                       "subject": "%s",
-                      "htmlContent": %s
+                      "htmlContent": %s%s
                     }
                     """.formatted(
                         senderEmail,
                         to,
                         escapeJson(subject),
-                        escapeJsonString(htmlContent)
+                        escapeJsonString(htmlContent),
+                        attachmentJson
                     );
 
                 java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
@@ -217,10 +278,13 @@ public class EmailServiceImpl implements EmailService {
             if (mailSender != null) {
                 MimeMessage message = mailSender.createMimeMessage();
                 MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-                helper.setFrom(fromEmail.isBlank() ? "noreply@netaa-ecole.ml" : fromEmail);
+                helper.setFrom(fromEmail.isBlank() ? "netaa.ecole.mali@gmail.com" : fromEmail);
                 helper.setTo(to);
                 helper.setSubject(subject);
                 helper.setText(htmlContent, true);
+                if (attachmentBytes != null && attachmentBytes.length > 0 && attachmentName != null) {
+                    helper.addAttachment(attachmentName, new org.springframework.core.io.ByteArrayResource(attachmentBytes));
+                }
                 mailSender.send(message);
                 logger.info("📧 Email SMTP envoyé avec succès à : {}", to);
             } else {

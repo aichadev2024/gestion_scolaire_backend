@@ -26,19 +26,25 @@ public class EtablissementServiceImpl implements EtablissementService {
     private final com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository utilisateurRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.ProfilRepository profilRepository;
     private final DtoMapper dtoMapper;
+    private final RecuEtablissementPdfService recuEtablissementPdfService;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService emailService;
 
     public EtablissementServiceImpl(
             EtablissementRepository etablissementRepository,
             UtilisateurService utilisateurService,
             com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository utilisateurRepository,
             com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.ProfilRepository profilRepository,
-            DtoMapper dtoMapper
+            DtoMapper dtoMapper,
+            RecuEtablissementPdfService recuEtablissementPdfService,
+            com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService emailService
     ) {
         this.etablissementRepository = etablissementRepository;
         this.utilisateurService = utilisateurService;
         this.utilisateurRepository = utilisateurRepository;
         this.profilRepository = profilRepository;
         this.dtoMapper = dtoMapper;
+        this.recuEtablissementPdfService = recuEtablissementPdfService;
+        this.emailService = emailService;
     }
 
     @Override
@@ -80,6 +86,14 @@ public class EtablissementServiceImpl implements EtablissementService {
 
         Profil profil = dtoMapper.toProfil(request.getAdminProfil());
         utilisateurService.inscrire(admin, profil, "ADMIN");
+
+        // Génération automatique du reçu PDF et envoi par e-mail
+        try {
+            byte[] pdfBytes = recuEtablissementPdfService.genererRecuAbonnementPdf(savedEtablissement.getId());
+            emailService.sendEtablissementCreatedWithPdf(savedEtablissement, adminEmail, request.getAdminMotDePasse(), pdfBytes);
+        } catch (Exception e) {
+            System.err.println("Avertissement : Erreur lors de l'envoi du mail/PDF de reçu d'établissement : " + e.getMessage());
+        }
 
         return mapToResponse(savedEtablissement);
     }
