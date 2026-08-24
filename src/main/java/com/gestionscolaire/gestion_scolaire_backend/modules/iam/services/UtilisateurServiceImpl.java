@@ -120,6 +120,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         if (utilisateurRepository.existsByRoleNom("SUPER_ADMIN")) {
             throw new BadRequestException("Un compte Super-Admin existe déjà sur la plateforme Netaa. La création de compte Super-Admin est verrouillée.");
         }
+        utilisateur.setEtablissement(null); // Le SuperAdmin doit impérativement avoir etablissement_id = null
         return inscrire(utilisateur, profil, "SUPER_ADMIN");
     }
 
