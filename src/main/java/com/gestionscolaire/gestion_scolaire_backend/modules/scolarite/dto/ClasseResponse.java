@@ -15,6 +15,7 @@ public class ClasseResponse {
     private Integer niveauId;
     private String niveauNom;
     private Long enseignantPrincipalId;
+    private String enseignantPrincipalNom;
     private String anneeScolaire;
     private Integer capaciteMax;
 }

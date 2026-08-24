@@ -103,12 +103,17 @@ public class DtoMapper {
     }
 
     public ClasseResponse toClasseResponse(Classe classe) {
+        String ensNom = null;
+        if (classe.getEnseignantPrincipal() != null && classe.getEnseignantPrincipal().getProfil() != null) {
+            ensNom = (classe.getEnseignantPrincipal().getProfil().getPrenom() + " " + classe.getEnseignantPrincipal().getProfil().getNom()).trim();
+        }
         return ClasseResponse.builder()
                 .id(classe.getId())
                 .nom(classe.getNom())
                 .niveauId(classe.getNiveau() != null ? classe.getNiveau().getId() : null)
                 .niveauNom(classe.getNiveau() != null ? classe.getNiveau().getNom() : null)
                 .enseignantPrincipalId(classe.getEnseignantPrincipal() != null ? classe.getEnseignantPrincipal().getId() : null)
+                .enseignantPrincipalNom(ensNom)
                 .anneeScolaire(classe.getAnneeScolaire())
                 .capaciteMax(classe.getCapaciteMax())
                 .build();
