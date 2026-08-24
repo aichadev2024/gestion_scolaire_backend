@@ -76,12 +76,16 @@ public class UtilisateurServiceImpl implements UtilisateurService {
             }
         }
 
-        // Envoi automatique de l'email de bienvenue Brevo
-        try {
-            logger.info("📧 [ENVOI BIENVENUE] Envoi des identifiants au compte [{}] ({}) à [{}]", savedUser.getUsername(), nomRole, savedUser.getEmail());
-            emailService.sendWelcomeEmail(savedUser, rawPassword);
-        } catch (Exception e) {
-            logger.error("❌ Erreur lors de l'envoi de l'email de bienvenue à {}: {}", savedUser.getEmail(), e.getMessage());
+        // Envoi automatique de l'email de bienvenue Brevo (si l'utilisateur possède un e-mail)
+        if (savedUser.getEmail() != null && !savedUser.getEmail().isBlank()) {
+            try {
+                logger.info("📧 [ENVOI BIENVENUE] Envoi des identifiants au compte [{}] ({}) à [{}]", savedUser.getUsername(), nomRole, savedUser.getEmail());
+                emailService.sendWelcomeEmail(savedUser, rawPassword);
+            } catch (Exception e) {
+                logger.error("❌ Erreur lors de l'envoi de l'email de bienvenue à {}: {}", savedUser.getEmail(), e.getMessage());
+            }
+        } else {
+            logger.info("ℹ️ Compte [{}] ({}) créé sans adresse e-mail. Les identifiants doivent être transmis manuellement par l'administration.", savedUser.getUsername(), nomRole);
         }
 
         return savedUser;

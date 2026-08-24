@@ -78,27 +78,29 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        // Première connexion : Envoi obligatoire d'un OTP par Email
+        // Première connexion : Envoi d'un OTP par Email uniquement si l'utilisateur possède une adresse e-mail
         if (Boolean.TRUE.equals(utilisateur.getEstPremierLogin())) {
-            String otpCode = String.format("%06d", new Random().nextInt(900000) + 100000);
-            utilisateur.setOtpCode(otpCode);
-            utilisateur.setOtpExpiry(LocalDateTime.now().plusMinutes(15));
-            utilisateurRepository.save(utilisateur);
+            if (utilisateur.getEmail() != null && !utilisateur.getEmail().isBlank()) {
+                String otpCode = String.format("%06d", new Random().nextInt(900000) + 100000);
+                utilisateur.setOtpCode(otpCode);
+                utilisateur.setOtpExpiry(LocalDateTime.now().plusMinutes(15));
+                utilisateurRepository.save(utilisateur);
 
-            emailService.sendOtpEmail(utilisateur, otpCode);
+                emailService.sendOtpEmail(utilisateur, otpCode);
 
-            String emailDest = (utilisateur.getEmail() != null && !utilisateur.getEmail().isBlank()) 
-                    ? utilisateur.getEmail() 
-                    : "votre adresse mail";
-
-            return AuthResponse.builder()
-                    .requiresOtp(true)
-                    .utilisateurId(utilisateur.getId())
-                    .email(utilisateur.getEmail())
-                    .username(utilisateur.getUsername())
-                    .role(utilisateur.getRole().getNom())
-                    .message("Premier login détecté. Un code OTP de confirmation a été envoyé à " + emailDest + ". Veuillez consulter vos mails pour le valider.")
-                    .build();
+                return AuthResponse.builder()
+                        .requiresOtp(true)
+                        .utilisateurId(utilisateur.getId())
+                        .email(utilisateur.getEmail())
+                        .username(utilisateur.getUsername())
+                        .role(utilisateur.getRole().getNom())
+                        .message("Premier login détecté. Un code OTP de confirmation a été envoyé à " + utilisateur.getEmail() + ". Veuillez consulter vos mails pour le valider.")
+                        .build();
+            } else {
+                // Utilisateur sans e-mail (ex: Enseignant / Parent sans mail) : valider automatiquement le premier login
+                utilisateur.setEstPremierLogin(false);
+                utilisateurRepository.save(utilisateur);
+            }
         }
 
         Profil profil = profilRepository.findByUtilisateurId(utilisateur.getId()).orElse(null);

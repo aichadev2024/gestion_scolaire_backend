@@ -110,7 +110,7 @@ public class EleveServiceImpl implements EleveService {
                 username = baseUsername + counter++;
             }
 
-            String email = (profil.getEmail() != null && !profil.getEmail().isBlank()) ? profil.getEmail() : username + "@netaa-ecole.ml";
+            String email = (profil.getEmail() != null && !profil.getEmail().isBlank()) ? profil.getEmail().trim() : null;
 
             com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etablissement = null;
             try {

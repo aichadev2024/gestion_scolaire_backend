@@ -48,7 +48,7 @@ public class EnseignantServiceImpl implements EnseignantService {
 
         String email = (profil.getEmail() != null && !profil.getEmail().isBlank()) 
                 ? profil.getEmail().trim() 
-                : username + "@netaa-ecole.ml";
+                : null;
 
         // Récupérer l'établissement de l'utilisateur connecté (Admin)
         com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etablissement = null;
