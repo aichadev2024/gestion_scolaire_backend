@@ -107,6 +107,13 @@ public class ClasseServiceImpl implements ClasseService {
         } catch (Exception ignored) {}
         return classeRepository.findAll();
     }
+
+    @Override
+    public void supprimerClasse(Long id) {
+        Classe classe = classeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable ID : " + id));
+        classeRepository.delete(classe);
+    }
 }
 
 

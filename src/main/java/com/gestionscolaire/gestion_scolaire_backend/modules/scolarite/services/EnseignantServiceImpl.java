@@ -133,6 +133,13 @@ public class EnseignantServiceImpl implements EnseignantService {
         } catch (Exception ignored) {}
         return enseignantRepository.findAll();
     }
+
+    @Override
+    public void supprimerEnseignant(Long id) {
+        Enseignant enseignant = enseignantRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable ID : " + id));
+        enseignantRepository.delete(enseignant);
+    }
 }
 
 

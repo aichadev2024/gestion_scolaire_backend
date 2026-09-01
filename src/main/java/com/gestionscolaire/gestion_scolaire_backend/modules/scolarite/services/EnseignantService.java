@@ -11,6 +11,7 @@ public interface EnseignantService {
     Optional<Enseignant> trouverParId(Long id);
     Optional<Enseignant> trouverParMatricule(String matricule);
     List<Enseignant> listerTous();
+    void supprimerEnseignant(Long id);
 }
 
 

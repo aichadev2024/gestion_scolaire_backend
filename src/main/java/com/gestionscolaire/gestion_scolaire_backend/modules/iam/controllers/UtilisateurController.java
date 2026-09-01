@@ -64,6 +64,27 @@ public class UtilisateurController {
         utilisateurService.modifierStatut(id, estActif);
         return ResponseEntity.ok(Map.of("message", "Statut mis à jour"));
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ResponseEntity<UtilisateurResponse> modifier(@PathVariable Long id, @RequestBody RegisterUtilisateurRequest request) {
+        Utilisateur details = Utilisateur.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .motDePasse(request.getMotDePasse())
+                .build();
+        Profil profil = dtoMapper.toProfil(request.getProfil());
+        Utilisateur updated = utilisateurService.modifierUtilisateur(id, details, profil, request.getRole());
+        Profil updatedProfil = profilRepository.findByUtilisateurId(updated.getId()).orElse(null);
+        return ResponseEntity.ok(dtoMapper.toUtilisateurResponse(updated, updatedProfil));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
+        utilisateurService.supprimerUtilisateur(id);
+        return ResponseEntity.ok(Map.of("message", "Compte utilisateur supprimé avec succès"));
+    }
 }
 
 

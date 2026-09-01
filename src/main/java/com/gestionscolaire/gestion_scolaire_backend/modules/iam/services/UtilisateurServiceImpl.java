@@ -159,6 +159,62 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         utilisateur.setEstActif(estActif);
         utilisateurRepository.save(utilisateur);
     }
+
+    @Override
+    public Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole) {
+        Utilisateur utilisateur = utilisateurRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id));
+
+        if (details.getUsername() != null && !details.getUsername().isBlank()) {
+            utilisateur.setUsername(details.getUsername().trim());
+        }
+        if (details.getEmail() != null && !details.getEmail().isBlank()) {
+            utilisateur.setEmail(details.getEmail().trim());
+        }
+
+        if (details.getMotDePasse() != null && !details.getMotDePasse().isBlank()) {
+            utilisateur.setMotDePasse(passwordEncoder.encode(details.getMotDePasse()));
+        }
+
+        if (nomRole != null && !nomRole.isBlank()) {
+            Role role = roleRepository.findByNom(nomRole)
+                    .orElseThrow(() -> new ResourceNotFoundException("Rôle introuvable : " + nomRole));
+            utilisateur.setRole(role);
+        }
+
+        Utilisateur savedUser = utilisateurRepository.save(utilisateur);
+
+        Profil profil = profilRepository.findByUtilisateurId(id).orElseGet(() -> Profil.builder().utilisateur(savedUser).build());
+        if (profilDetails != null) {
+            profil.setPrenom(profilDetails.getPrenom());
+            profil.setNom(profilDetails.getNom());
+            if (profilDetails.getTelephone() != null) profil.setTelephone(profilDetails.getTelephone());
+            if (profilDetails.getGenre() != null) profil.setGenre(profilDetails.getGenre());
+            if (profilDetails.getAdresse() != null) profil.setAdresse(profilDetails.getAdresse());
+            profil.setEmail(savedUser.getEmail());
+            profilRepository.save(profil);
+        }
+
+        return savedUser;
+    }
+
+    @Override
+    public void supprimerUtilisateur(Long id) {
+        Utilisateur utilisateur = utilisateurRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id));
+
+        // Delete parent entry if role is PARENT
+        try {
+            parentRepository.findByProfilUtilisateurId(id).ifPresent(p -> parentRepository.delete(p));
+        } catch (Exception ignored) {}
+
+        // Delete profile entry if exists
+        try {
+            profilRepository.findByUtilisateurId(id).ifPresent(p -> profilRepository.delete(p));
+        } catch (Exception ignored) {}
+
+        utilisateurRepository.delete(utilisateur);
+    }
 }
 
 

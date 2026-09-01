@@ -10,6 +10,7 @@ public interface ClasseService {
     Optional<Classe> trouverParId(Long id);
     List<Classe> listerParNiveau(Integer niveauId);
     List<Classe> listerToutes();
+    void supprimerClasse(Long id);
 }
 
 

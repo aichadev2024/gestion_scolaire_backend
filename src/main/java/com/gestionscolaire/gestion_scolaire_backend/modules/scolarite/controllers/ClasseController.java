@@ -69,6 +69,13 @@ public class ClasseController {
         Classe updated = classeService.modifierClasse(id, details, request.getNiveauId(), request.getEnseignantPrincipalId());
         return ResponseEntity.ok(dtoMapper.toClasseResponse(updated));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    public ResponseEntity<java.util.Map<String, String>> supprimer(@PathVariable Long id) {
+        classeService.supprimerClasse(id);
+        return ResponseEntity.ok(java.util.Map.of("message", "Classe supprimée avec succès"));
+    }
 }
 
 

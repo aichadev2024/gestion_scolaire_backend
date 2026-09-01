@@ -12,6 +12,8 @@ public interface UtilisateurService {
     Optional<Utilisateur> trouverParEmail(String email);
     List<Utilisateur> listerTous();
     void modifierStatut(Long id, boolean estActif);
+    Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole);
+    void supprimerUtilisateur(Long id);
 }
 
 
