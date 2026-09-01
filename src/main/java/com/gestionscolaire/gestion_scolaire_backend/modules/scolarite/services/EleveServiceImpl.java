@@ -281,6 +281,13 @@ public class EleveServiceImpl implements EleveService {
         eleve.setStatut("ARCHIVE");
         eleveRepository.save(eleve);
     }
+
+    @Override
+    public void supprimerEleve(Long id) {
+        Eleve eleve = eleveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id));
+        eleveRepository.delete(eleve);
+    }
 }
 
 

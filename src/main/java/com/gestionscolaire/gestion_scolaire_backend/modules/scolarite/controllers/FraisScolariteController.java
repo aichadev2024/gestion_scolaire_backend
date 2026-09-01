@@ -35,6 +35,12 @@ public class FraisScolariteController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE', 'DIRECTEUR')")
+    public ResponseEntity<List<FraisScolarite>> listerTous() {
+        return ResponseEntity.ok(fraisScolariteService.listerTous());
+    }
+
     @GetMapping("/classe/{classeId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE', 'DIRECTEUR', 'PARENT')")
     public ResponseEntity<List<FraisScolarite>> listerParClasse(@PathVariable Long classeId) {

@@ -10,6 +10,7 @@ public interface FraisScolariteService {
     FraisScolarite modifierFrais(Long id, FraisScolarite fraisDetails);
     Optional<FraisScolarite> trouverParId(Long id);
     List<FraisScolarite> listerParClasse(Long classeId);
+    List<FraisScolarite> listerTous();
     void supprimerFrais(Long id);
 }
 

@@ -68,6 +68,25 @@ public class FraisScolariteServiceImpl implements FraisScolariteService {
     }
 
     @Override
+    public List<FraisScolarite> listerTous() {
+        try {
+            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
+            if (current != null && current.getUtilisateur() != null) {
+                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
+                    return fraisScolariteRepository.findAll();
+                }
+                if (current.getUtilisateur().getEtablissement() != null) {
+                    Long etabId = current.getUtilisateur().getEtablissement().getId();
+                    return fraisScolariteRepository.findAll().stream()
+                            .filter(f -> f.getClasse() == null || f.getClasse().getEtablissement() == null || etabId.equals(f.getClasse().getEtablissement().getId()))
+                            .toList();
+                }
+            }
+        } catch (Exception ignored) {}
+        return fraisScolariteRepository.findAll();
+    }
+
+    @Override
     public void supprimerFrais(Long id) {
         if (!fraisScolariteRepository.existsById(id)) {
             throw new ResourceNotFoundException("Frais de scolarité introuvables");

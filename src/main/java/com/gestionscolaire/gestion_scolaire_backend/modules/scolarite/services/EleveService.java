@@ -14,6 +14,7 @@ public interface EleveService {
     List<Eleve> listerElevesParParent(Long parentId);
     List<Eleve> listerTous();
     void archiverEleve(Long id);
+    void supprimerEleve(Long id);
 }
 
 

@@ -85,6 +85,13 @@ public class EleveController {
         eleveService.archiverEleve(id);
         return ResponseEntity.ok(Map.of("message", "Élève archivé"));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
+        eleveService.supprimerEleve(id);
+        return ResponseEntity.ok(Map.of("message", "Élève supprimé avec succès"));
+    }
 }
 
 
