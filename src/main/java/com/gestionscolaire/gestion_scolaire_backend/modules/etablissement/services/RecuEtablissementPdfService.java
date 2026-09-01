@@ -100,15 +100,15 @@ public class RecuEtablissementPdfService {
             
             ajouterLigneHeader(subTable, "SERVICE / ABONNEMENT SOUSCRIT", "DÉTAILS FINANCIERS", headerFont);
             
-            String plan = etab.getPlanTarifaire() != null ? etab.getPlanTarifaire() : "STANDARD";
+            String plan = etab.getPlanTarifaire() != null ? etab.getPlanTarifaire() : "STARTER";
             String montant = obtenirMontantParPlan(plan);
             String dateExp = etab.getDateExpirationAbonnement() != null 
                     ? etab.getDateExpirationAbonnement().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    : "1 an à compter de l'activation";
+                    : "1 mois à compter de l'activation";
 
             ajouterLigne(subTable, "Licence Logicielle", "Plateforme Netaa École (Plan " + plan + ")", headerFont, normalFont);
-            ajouterLigne(subTable, "Durée de Validité", "1 An (Jusqu'au " + dateExp + ")", headerFont, normalFont);
-            ajouterLigne(subTable, "Montant Total Réglé", montant, headerFont, boldFont);
+            ajouterLigne(subTable, "Période de Validité", "Mensuelle (Jusqu'au " + dateExp + ")", headerFont, normalFont);
+            ajouterLigne(subTable, "Montant Mensuel Réglé", montant, headerFont, boldFont);
             ajouterLigne(subTable, "Mode de Règlement", "Paiement / Validation Directe Super-Admin", headerFont, normalFont);
             ajouterLigne(subTable, "Statut du Paiement", "PAYÉ & VALIDÉ (ACQUITTÉ)", headerFont, boldFont);
 
@@ -146,9 +146,8 @@ public class RecuEtablissementPdfService {
     }
 
     private String obtenirMontantParPlan(String plan) {
-        if ("PREMIUM".equalsIgnoreCase(plan)) return "500 000 FCFA";
-        if ("PRO".equalsIgnoreCase(plan) || "ENTERPRISE".equalsIgnoreCase(plan)) return "1 000 000 FCFA";
-        return "250 000 FCFA";
+        if ("PRO".equalsIgnoreCase(plan)) return "75 000 FCFA / mois";
+        return "25 000 FCFA / mois";
     }
 
     private void ajouterLigneHeader(PdfPTable table, String col1, String col2, Font font) {

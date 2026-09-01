@@ -56,7 +56,7 @@ public class EtablissementServiceImpl implements EtablissementService {
 
         LocalDateTime expiryDate = request.getDateExpirationAbonnement() != null 
                 ? request.getDateExpirationAbonnement() 
-                : java.time.LocalDateTime.now().plusYears(1);
+                : java.time.LocalDateTime.now().plusMonths(1);
 
         Etablissement etablissement = Etablissement.builder()
                 .nom(request.getNomEtablissement())
