@@ -8,7 +8,6 @@ public class MatiereRequest {
     @NotBlank(message = "Le nom est obligatoire")
     private String nom;
 
-    @NotBlank(message = "Le code est obligatoire")
     private String code;
 }
 

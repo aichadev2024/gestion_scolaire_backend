@@ -21,10 +21,28 @@ public class MatiereServiceImpl implements MatiereService {
         this.matiereRepository = matiereRepository;
     }
 
+    private String genererCodeAutomatique(String nom) {
+        if (nom == null || nom.isBlank()) return "MAT-" + (System.currentTimeMillis() % 10000);
+        String clean = nom.replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
+        String prefix = clean.length() >= 4 ? clean.substring(0, 4) : clean;
+        if (prefix.isBlank()) prefix = "MAT";
+
+        String codeGenere = prefix;
+        int counter = 1;
+        while (matiereRepository.findByCode(codeGenere).isPresent()) {
+            codeGenere = prefix + "-" + counter++;
+        }
+        return codeGenere;
+    }
+
     @Override
     public Matiere creerMatiere(Matiere matiere) {
-        if (matiereRepository.findByCode(matiere.getCode()).isPresent()) {
-            throw new BadRequestException("Une matière avec ce code existe déjà");
+        if (matiere.getCode() == null || matiere.getCode().isBlank()) {
+            matiere.setCode(genererCodeAutomatique(matiere.getNom()));
+        } else {
+            if (matiereRepository.findByCode(matiere.getCode()).isPresent()) {
+                throw new BadRequestException("Une matière avec ce code existe déjà");
+            }
         }
         if (matiere.getEtablissement() == null) {
             try {
@@ -39,14 +57,20 @@ public class MatiereServiceImpl implements MatiereService {
         Matiere matiere = matiereRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Matière introuvable"));
 
-        matiereRepository.findByCode(matiereDetails.getCode())
-                .filter(existing -> !existing.getId().equals(id))
-                .ifPresent(existing -> {
-                    throw new BadRequestException("Une matière avec ce code existe déjà");
-                });
+        if (matiereDetails.getCode() == null || matiereDetails.getCode().isBlank()) {
+            if (matiere.getCode() == null || matiere.getCode().isBlank()) {
+                matiere.setCode(genererCodeAutomatique(matiereDetails.getNom()));
+            }
+        } else {
+            matiereRepository.findByCode(matiereDetails.getCode())
+                    .filter(existing -> !existing.getId().equals(id))
+                    .ifPresent(existing -> {
+                        throw new BadRequestException("Une matière avec ce code existe déjà");
+                    });
+            matiere.setCode(matiereDetails.getCode());
+        }
 
         matiere.setNom(matiereDetails.getNom());
-        matiere.setCode(matiereDetails.getCode());
         return matiereRepository.save(matiere);
     }
 
