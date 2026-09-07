@@ -36,7 +36,7 @@ public class FraisScolariteController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE', 'DIRECTEUR')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FraisScolarite>> listerTous() {
         return ResponseEntity.ok(fraisScolariteService.listerTous());
     }
