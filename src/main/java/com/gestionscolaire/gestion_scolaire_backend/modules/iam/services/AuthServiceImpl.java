@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.dto.VerifyOtpRequest;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository;
 import java.time.LocalDateTime;
 import java.util.Random;
 
@@ -27,19 +29,22 @@ public class AuthServiceImpl implements AuthService {
     private final UtilisateurRepository utilisateurRepository;
     private final ProfilRepository profilRepository;
     private final EmailService emailService;
+    private final EleveRepository eleveRepository;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             UtilisateurRepository utilisateurRepository,
             ProfilRepository profilRepository,
-            EmailService emailService
+            EmailService emailService,
+            EleveRepository eleveRepository
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.utilisateurRepository = utilisateurRepository;
         this.profilRepository = profilRepository;
         this.emailService = emailService;
+        this.eleveRepository = eleveRepository;
     }
 
     @Override
@@ -106,6 +111,18 @@ public class AuthServiceImpl implements AuthService {
         Profil profil = profilRepository.findByUtilisateurId(utilisateur.getId()).orElse(null);
         String token = jwtService.generateToken(utilisateur);
 
+        Long eleveId = null;
+        String classeNom = null;
+        if (utilisateur.getRole() != null && "ELEVE".equalsIgnoreCase(utilisateur.getRole().getNom())) {
+            Eleve eleve = eleveRepository.findByProfilUtilisateurId(utilisateur.getId()).orElse(null);
+            if (eleve != null) {
+                eleveId = eleve.getId();
+                if (eleve.getClasse() != null) {
+                    classeNom = eleve.getClasse().getNom();
+                }
+            }
+        }
+
         return AuthResponse.builder()
                 .requiresOtp(false)
                 .token(token)
@@ -118,6 +135,8 @@ public class AuthServiceImpl implements AuthService {
                 .nom(profil != null ? profil.getNom() : null)
                 .etablissementId(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getId() : null)
                 .etablissementNom(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getNom() : "Établissement Scolaire")
+                .eleveId(eleveId)
+                .classeNom(classeNom)
                 .build();
     }
 
@@ -147,6 +166,18 @@ public class AuthServiceImpl implements AuthService {
         Profil profil = profilRepository.findByUtilisateurId(utilisateur.getId()).orElse(null);
         String token = jwtService.generateToken(utilisateur);
 
+        Long eleveId = null;
+        String classeNom = null;
+        if (utilisateur.getRole() != null && "ELEVE".equalsIgnoreCase(utilisateur.getRole().getNom())) {
+            Eleve eleve = eleveRepository.findByProfilUtilisateurId(utilisateur.getId()).orElse(null);
+            if (eleve != null) {
+                eleveId = eleve.getId();
+                if (eleve.getClasse() != null) {
+                    classeNom = eleve.getClasse().getNom();
+                }
+            }
+        }
+
         return AuthResponse.builder()
                 .requiresOtp(false)
                 .token(token)
@@ -159,6 +190,8 @@ public class AuthServiceImpl implements AuthService {
                 .nom(profil != null ? profil.getNom() : null)
                 .etablissementId(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getId() : null)
                 .etablissementNom(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getNom() : "Établissement Scolaire")
+                .eleveId(eleveId)
+                .classeNom(classeNom)
                 .message("Première connexion validée avec succès !")
                 .build();
     }
