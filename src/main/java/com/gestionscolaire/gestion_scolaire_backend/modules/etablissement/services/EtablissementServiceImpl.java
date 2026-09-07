@@ -47,11 +47,34 @@ public class EtablissementServiceImpl implements EtablissementService {
         this.emailService = emailService;
     }
 
+    private String genererCodeEtablissementAutomatique(String nom) {
+        if (nom == null || nom.isBlank()) return "ecole-" + (System.currentTimeMillis() % 10000);
+        String base = java.text.Normalizer.normalize(nom, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^a-zA-Z0-9\\s]", "")
+                .trim()
+                .toLowerCase()
+                .replaceAll("\\s+", "-");
+        if (base.isBlank()) base = "ecole";
+        String code = base;
+        int counter = 1;
+        while (etablissementRepository.existsByCode(code)) {
+            code = base + "-" + counter++;
+        }
+        return code;
+    }
+
     @Override
     @Transactional
     public EtablissementResponse creerEtablissementAvecAdmin(CreateEtablissementWithAdminRequest request) {
-        if (etablissementRepository.existsByCode(request.getCodeEtablissement())) {
-            throw new BadRequestException("Un établissement avec ce code existe déjà : " + request.getCodeEtablissement());
+        String codeFinal;
+        if (request.getCodeEtablissement() == null || request.getCodeEtablissement().isBlank()) {
+            codeFinal = genererCodeEtablissementAutomatique(request.getNomEtablissement());
+        } else {
+            codeFinal = request.getCodeEtablissement().toLowerCase().trim();
+            if (etablissementRepository.existsByCode(codeFinal)) {
+                throw new BadRequestException("Un établissement avec ce code existe déjà : " + codeFinal);
+            }
         }
 
         LocalDateTime expiryDate = request.getDateExpirationAbonnement() != null 
@@ -60,7 +83,7 @@ public class EtablissementServiceImpl implements EtablissementService {
 
         Etablissement etablissement = Etablissement.builder()
                 .nom(request.getNomEtablissement())
-                .code(request.getCodeEtablissement().toLowerCase().trim())
+                .code(codeFinal)
                 .emailContact(request.getEmailContact())
                 .telephone(request.getTelephone())
                 .adresse(request.getAdresse())

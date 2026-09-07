@@ -15,7 +15,6 @@ public class CreateEtablissementWithAdminRequest {
     @NotBlank(message = "Le nom de l'établissement est obligatoire")
     private String nomEtablissement;
 
-    @NotBlank(message = "Le code de l'établissement (ex: jules-verne) est obligatoire")
     private String codeEtablissement;
 
     private String emailContact;
