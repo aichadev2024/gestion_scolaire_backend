@@ -83,6 +83,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                         .build());
             }
         }
+        }
 
         // Envoi automatique de l'email de bienvenue Brevo (si l'utilisateur possède un e-mail)
         if (savedUser.getEmail() != null && !savedUser.getEmail().isBlank()) {
