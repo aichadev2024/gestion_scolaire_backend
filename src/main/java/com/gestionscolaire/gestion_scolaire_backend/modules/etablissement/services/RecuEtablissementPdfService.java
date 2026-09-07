@@ -147,7 +147,7 @@ public class RecuEtablissementPdfService {
 
     private String obtenirMontantParPlan(String plan) {
         if ("PRO".equalsIgnoreCase(plan)) return "75 000 FCFA / mois";
-        return "25 000 FCFA / mois";
+        return "50 000 FCFA / mois";
     }
 
     private void ajouterLigneHeader(PdfPTable table, String col1, String col2, Font font) {
