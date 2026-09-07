@@ -42,7 +42,13 @@ public class RecuPdfService {
 
             document.add(new Paragraph("REÇU DE PAIEMENT", titleFont));
             document.add(new Paragraph(" "));
-            document.add(new Paragraph("Établissement : Gestion Scolaire", normalFont));
+            String etablissementNom = "Gestion Scolaire";
+            if (paiement.getEleve() != null && paiement.getEleve().getProfil() != null && 
+                paiement.getEleve().getProfil().getUtilisateur() != null && 
+                paiement.getEleve().getProfil().getUtilisateur().getEtablissement() != null) {
+                etablissementNom = paiement.getEleve().getProfil().getUtilisateur().getEtablissement().getNom();
+            }
+            document.add(new Paragraph("Établissement : " + etablissementNom, normalFont));
             document.add(new Paragraph("N° Reçu : " + paiement.getNumeroRecu(), headerFont));
             document.add(new Paragraph("Date : " + paiement.getDatePaiement()
                     .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), normalFont));
