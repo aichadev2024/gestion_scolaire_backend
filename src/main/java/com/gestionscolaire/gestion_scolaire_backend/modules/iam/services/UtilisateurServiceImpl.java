@@ -53,6 +53,13 @@ public class UtilisateurServiceImpl implements UtilisateurService {
             } catch (Exception ignored) {}
         }
 
+        if (utilisateur.getEmail() != null && utilisateur.getEmail().isBlank()) {
+            utilisateur.setEmail(null);
+        }
+        if (profil != null && profil.getEmail() != null && profil.getEmail().isBlank()) {
+            profil.setEmail(null);
+        }
+
         String rawPassword = utilisateur.getMotDePasse();
         utilisateur.setRole(role);
         if (utilisateur.getEstPremierLogin() == null) {
@@ -61,11 +68,12 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         utilisateur.setMotDePasse(passwordEncoder.encode(utilisateur.getMotDePasse()));
         Utilisateur savedUser = utilisateurRepository.save(utilisateur);
 
-        if (profil.getEmail() == null || profil.getEmail().isBlank()) {
-            profil.setEmail(savedUser.getEmail());
-        }
-        profil.setUtilisateur(savedUser);
-        Profil savedProfil = profilRepository.save(profil);
+        if (profil != null) {
+            if (profil.getEmail() == null || profil.getEmail().isBlank()) {
+                profil.setEmail(savedUser.getEmail());
+            }
+            profil.setUtilisateur(savedUser);
+            Profil savedProfil = profilRepository.save(profil);
 
         // Si le rôle créé est PARENT, on crée automatiquement l'enregistrement dans la table parents
         if ("PARENT".equalsIgnoreCase(nomRole)) {
@@ -168,8 +176,8 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         if (details.getUsername() != null && !details.getUsername().isBlank()) {
             utilisateur.setUsername(details.getUsername().trim());
         }
-        if (details.getEmail() != null && !details.getEmail().isBlank()) {
-            utilisateur.setEmail(details.getEmail().trim());
+        if (details.getEmail() != null) {
+            utilisateur.setEmail(details.getEmail().isBlank() ? null : details.getEmail().trim());
         }
 
         if (details.getMotDePasse() != null && !details.getMotDePasse().isBlank()) {
