@@ -1,0 +1,23 @@
+# Profil de test — la base est fournie par Testcontainers (@ServiceConnection).
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: false
+  mail:
+    host: localhost
+    port: 3025
+
+jwt:
+  secret: secret-de-test-suffisamment-long-pour-hmac-sha256-0123456789
+  expiration-ms: 3600000
+
+app:
+  frontend-url: http://localhost:3000
+  cors:
+    allowed-origins: http://localhost:3000
