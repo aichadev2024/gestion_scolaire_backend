@@ -49,6 +49,20 @@ spring:
 server:
   port: ${PORT:8089}
 
+# Sonde de santé (Render health check, monitoring uptime).
+# Seul /actuator/health est exposé ; aucun détail (pas de fuite d'infos infra).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      show-components: never
+
 jwt:
   # OBLIGATOIRE : aucune valeur par défaut. L'application refuse de démarrer si JWT_SECRET
   # est absent, trop court (< 32 caractères) ou égal à la valeur d'exemple publique.
