@@ -62,6 +62,15 @@ management:
         enabled: true
       show-details: never
       show-components: never
+  health:
+    # Indicateurs non critiques pour servir les requêtes : on ne veut pas que
+    # /actuator/health passe DOWN (et que Render redémarre le service en boucle)
+    # juste parce que le relais SMTP est injoignable ou lent.
+    mail:
+      enabled: false
+    ssl:
+      enabled: false
+    # La base reste critique : si `db` est DOWN, /actuator/health doit l'être.
 
 jwt:
   # OBLIGATOIRE : aucune valeur par défaut. L'application refuse de démarrer si JWT_SECRET
