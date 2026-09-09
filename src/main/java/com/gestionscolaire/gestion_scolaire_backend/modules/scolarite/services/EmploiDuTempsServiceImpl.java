@@ -20,28 +20,33 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
     private final EmploiDuTempsRepository emploiDuTempsRepository;
     private final ClasseMatiereRepository classeMatiereRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
     public EmploiDuTempsServiceImpl(
             EmploiDuTempsRepository emploiDuTempsRepository,
             ClasseMatiereRepository classeMatiereRepository,
-            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository,
+            com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard
     ) {
         this.emploiDuTempsRepository = emploiDuTempsRepository;
         this.classeMatiereRepository = classeMatiereRepository;
         this.classeRepository = classeRepository;
+        this.tenantGuard = tenantGuard;
     }
 
     @Override
     public EmploiDuTemps creerCreneau(EmploiDuTemps creneau, Long classeMatiereId) {
         if (classeMatiereId != null) {
-            ClasseMatiere classeMatiere = classeMatiereRepository.findById(classeMatiereId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Classe-matière introuvable"));
+            ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Classe-matière introuvable")));
             creneau.setClasseMatiere(classeMatiere);
             creneau.setClasse(classeMatiere.getClasse());
+            creneau.setEtablissement(classeMatiere.getEtablissement());
         } else if (creneau.getClasse() != null && creneau.getClasse().getId() != null) {
-            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe c = classeRepository.findById(creneau.getClasse().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable"));
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe c = tenantGuard.requireSameTenant(classeRepository.findById(creneau.getClasse().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
             creneau.setClasse(c);
+            creneau.setEtablissement(c.getEtablissement());
         }
         validerCreneau(creneau);
         return emploiDuTempsRepository.save(creneau);
@@ -49,8 +54,8 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
 
     @Override
     public EmploiDuTemps modifierCreneau(Long id, EmploiDuTemps creneauDetails, Long classeMatiereId) {
-        EmploiDuTemps creneau = emploiDuTempsRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Créneau introuvable"));
+        EmploiDuTemps creneau = tenantGuard.requireSameTenant(emploiDuTempsRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Créneau introuvable")));
         validerCreneau(creneauDetails);
 
         creneau.setJourSemaine(creneauDetails.getJourSemaine());
@@ -61,13 +66,13 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
         creneau.setLibellePause(creneauDetails.getLibellePause());
 
         if (classeMatiereId != null) {
-            ClasseMatiere classeMatiere = classeMatiereRepository.findById(classeMatiereId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Classe-matière introuvable"));
+            ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Classe-matière introuvable")));
             creneau.setClasseMatiere(classeMatiere);
             creneau.setClasse(classeMatiere.getClasse());
         } else if (creneauDetails.getClasse() != null && creneauDetails.getClasse().getId() != null) {
-            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe c = classeRepository.findById(creneauDetails.getClasse().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable"));
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe c = tenantGuard.requireSameTenant(classeRepository.findById(creneauDetails.getClasse().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
             creneau.setClasse(c);
         }
 
@@ -76,25 +81,24 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
 
     @Override
     public Optional<EmploiDuTemps> trouverParId(Long id) {
-        return emploiDuTempsRepository.findById(id);
+        return emploiDuTempsRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
     public List<EmploiDuTemps> listerParClasse(Long classeId) {
-        return emploiDuTempsRepository.findByClasseIdOrClasseMatiereClasseId(classeId, classeId);
+        return tenantGuard.filterSameTenant(emploiDuTempsRepository.findByClasseIdOrClasseMatiereClasseId(classeId, classeId));
     }
 
     @Override
     public List<EmploiDuTemps> listerParEnseignant(Long enseignantId) {
-        return emploiDuTempsRepository.findByClasseMatiereEnseignantId(enseignantId);
+        return tenantGuard.filterSameTenant(emploiDuTempsRepository.findByClasseMatiereEnseignantId(enseignantId));
     }
 
     @Override
     public void supprimerCreneau(Long id) {
-        if (!emploiDuTempsRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Créneau introuvable");
-        }
-        emploiDuTempsRepository.deleteById(id);
+        EmploiDuTemps creneau = tenantGuard.requireSameTenant(emploiDuTempsRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Créneau introuvable")));
+        emploiDuTempsRepository.delete(creneau);
     }
 
     private void validerCreneau(EmploiDuTemps creneau) {

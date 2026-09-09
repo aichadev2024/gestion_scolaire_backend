@@ -41,10 +41,13 @@ public class BulletinServiceImpl implements BulletinService {
     @Autowired
     private NoteService noteService;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     @Override
     public BulletinResponse genererBulletin(Long eleveId, String periode, String anneeScolaire) {
-        Eleve eleve = eleveRepository.findById(eleveId)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
 
         if (eleve.getClasse() == null) {
             throw new BadRequestException("L'élève n'est affecté à aucune classe.");
@@ -54,6 +57,7 @@ public class BulletinServiceImpl implements BulletinService {
                 .orElse(Bulletin.builder()
                         .eleve(eleve)
                         .classe(eleve.getClasse())
+                        .etablissement(eleve.getEtablissement())
                         .periode(periode)
                         .anneeScolaire(anneeScolaire)
                         .estVerrouille(false)
@@ -80,8 +84,8 @@ public class BulletinServiceImpl implements BulletinService {
 
     @Override
     public BulletinResponse getBulletinDetails(Long eleveId, String periode, String anneeScolaire) {
-        Eleve eleve = eleveRepository.findById(eleveId)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
 
         Bulletin bulletin = bulletinRepository.findByEleveIdAndPeriodeAndAnneeScolaire(eleveId, periode, anneeScolaire)
                 .orElse(null);
@@ -141,9 +145,9 @@ public class BulletinServiceImpl implements BulletinService {
 
     @Override
     public BulletinResponse verrouillerBulletin(Long bulletinId) {
-        Bulletin bulletin = bulletinRepository.findById(bulletinId)
-                .orElseThrow(() -> new ResourceNotFoundException("Bulletin introuvable"));
-        
+        Bulletin bulletin = tenantGuard.requireSameTenant(bulletinRepository.findById(bulletinId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bulletin introuvable")));
+
         bulletin.setEstVerrouille(true);
         bulletin = bulletinRepository.save(bulletin);
 

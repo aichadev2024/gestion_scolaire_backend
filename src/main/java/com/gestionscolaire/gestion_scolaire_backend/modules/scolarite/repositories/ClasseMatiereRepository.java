@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ClasseMatiereRepository extends JpaRepository<ClasseMatiere, Long> {
+    List<ClasseMatiere> findByEtablissementId(Long etablissementId);
     List<ClasseMatiere> findByClasseId(Long classeId);
     List<ClasseMatiere> findByEnseignantId(Long enseignantId);
     Optional<ClasseMatiere> findByClasseIdAndMatiereId(Long classeId, Long matiereId);

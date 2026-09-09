@@ -1,5 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.ClasseMatiere;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
@@ -11,12 +14,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "notes")
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Note {
+public class Note implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -28,6 +32,10 @@ public class Note {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "classe_matiere_id", nullable = false)
     private ClasseMatiere classeMatiere;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "etablissement_id")
+    private Etablissement etablissement;
 
     @Column(nullable = false, length = 20)
     private String periode; // ex: TRIMESTRE_1, SEMESTRE_1

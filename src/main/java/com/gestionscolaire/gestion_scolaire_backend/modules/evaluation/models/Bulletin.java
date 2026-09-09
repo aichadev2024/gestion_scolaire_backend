@@ -1,5 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
 import jakarta.persistence.*;
@@ -13,12 +16,13 @@ import java.time.LocalDateTime;
 @Table(name = "bulletins", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"eleve_id", "periode", "annee_scolaire"})
 })
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Bulletin {
+public class Bulletin implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,6 +34,10 @@ public class Bulletin {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "classe_id", nullable = false)
     private Classe classe;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "etablissement_id")
+    private Etablissement etablissement;
 
     @Column(nullable = false, length = 20)
     private String periode; // TRIMESTRE_1, TRIMESTRE_2, TRIMESTRE_3

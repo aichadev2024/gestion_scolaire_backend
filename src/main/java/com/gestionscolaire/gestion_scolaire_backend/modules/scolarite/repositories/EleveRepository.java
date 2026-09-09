@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface EleveRepository extends JpaRepository<Eleve, Long> {
     Optional<Eleve> findByMatricule(String matricule);
+    List<Eleve> findByEtablissementId(Long etablissementId);
     List<Eleve> findByClasseId(Long classeId);
     List<Eleve> findByParentId(Long parentId);
     List<Eleve> findByParentIdOrParentSecondaireId(Long p1, Long p2);

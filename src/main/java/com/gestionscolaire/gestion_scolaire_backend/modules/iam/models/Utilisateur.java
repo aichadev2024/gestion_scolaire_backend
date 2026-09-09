@@ -1,5 +1,7 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.iam.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import jakarta.persistence.*;
 import lombok.*;
@@ -9,12 +11,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "utilisateurs")
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Utilisateur {
+public class Utilisateur implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -49,6 +52,11 @@ public class Utilisateur {
 
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
+
+    /** Nombre de tentatives OTP échouées depuis le dernier envoi (verrouillage au-delà du seuil). */
+    @Builder.Default
+    @Column(name = "otp_tentatives")
+    private Integer otpTentatives = 0;
 
     @CreationTimestamp
     @Column(name = "date_creation", nullable = false, updatable = false)

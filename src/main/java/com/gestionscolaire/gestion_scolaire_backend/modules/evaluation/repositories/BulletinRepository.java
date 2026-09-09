@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface BulletinRepository extends JpaRepository<Bulletin, Long> {
     Optional<Bulletin> findByEleveIdAndPeriodeAndAnneeScolaire(Long eleveId, String periode, String anneeScolaire);
     List<Bulletin> findByEleveId(Long eleveId);
+    List<Bulletin> findByEtablissementId(Long etablissementId);
     List<Bulletin> findByClasseIdAndPeriodeAndAnneeScolaire(Long classeId, String periode, String anneeScolaire);
 }
 

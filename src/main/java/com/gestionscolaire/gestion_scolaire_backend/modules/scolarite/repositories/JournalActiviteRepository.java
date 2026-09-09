@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface JournalActiviteRepository extends JpaRepository<JournalActivite, Long> {
     List<JournalActivite> findByUtilisateurIdOrderByDateCreationDesc(Long utilisateurId);
+    List<JournalActivite> findByEtablissementIdOrderByDateCreationDesc(Long etablissementId);
 }
 
 

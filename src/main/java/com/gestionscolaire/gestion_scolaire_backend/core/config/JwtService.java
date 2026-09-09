@@ -13,12 +13,42 @@ import java.util.Date;
 @Service
 public class JwtService {
 
+    /** Valeur d'exemple publiée dans le dépôt : interdite en exécution. */
+    private static final String SECRET_EXEMPLE_PUBLIC =
+            "gestion-scolaire-jwt-secret-key-2026-changez-en-production";
+    private static final int LONGUEUR_MIN_SECRET = 32;
+
     private final JwtProperties jwtProperties;
     private final SecretKey secretKey;
 
     public JwtService(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        this.secretKey = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+        String secret = validerSecret(jwtProperties.getSecret());
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Valide le secret JWT au démarrage. Échoue vite (contexte Spring non démarré)
+     * plutôt que de servir des tokens signés avec une clé faible ou publique.
+     */
+    private static String validerSecret(String secret) {
+        String valeur = secret == null ? "" : secret.strip();
+        if (valeur.isEmpty()) {
+            throw new IllegalStateException(
+                    "JWT_SECRET est obligatoire mais absent. Définissez la variable d'environnement "
+                    + "JWT_SECRET (>= " + LONGUEUR_MIN_SECRET + " caractères). Générer : openssl rand -base64 48");
+        }
+        if (valeur.length() < LONGUEUR_MIN_SECRET) {
+            throw new IllegalStateException(
+                    "JWT_SECRET est trop court (" + valeur.length() + " caractères). Minimum "
+                    + LONGUEUR_MIN_SECRET + " caractères pour HMAC-SHA256.");
+        }
+        if (SECRET_EXEMPLE_PUBLIC.equals(valeur)) {
+            throw new IllegalStateException(
+                    "JWT_SECRET utilise la valeur d'exemple publique du dépôt. Générez un secret unique "
+                    + "et définissez-le via la variable d'environnement JWT_SECRET.");
+        }
+        return valeur;
     }
 
     public String generateToken(Utilisateur utilisateur) {

@@ -32,6 +32,9 @@ public class ClasseServiceImpl implements ClasseService {
     @Autowired
     private EnseignantRepository enseignantRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     @Override
     public Classe creerClasse(Classe classe, Integer niveauId, Long enseignantPrincipalId) {
         Niveau niveau = niveauRepository.findById(niveauId)
@@ -45,8 +48,8 @@ public class ClasseServiceImpl implements ClasseService {
         }
 
         if (enseignantPrincipalId != null) {
-            Enseignant principal = enseignantRepository.findById(enseignantPrincipalId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable"));
+            Enseignant principal = tenantGuard.requireSameTenant(enseignantRepository.findById(enseignantPrincipalId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable")));
             classe.setEnseignantPrincipal(principal);
         }
 
@@ -55,8 +58,8 @@ public class ClasseServiceImpl implements ClasseService {
 
     @Override
     public Classe modifierClasse(Long id, Classe classeDetails, Integer niveauId, Long enseignantPrincipalId) {
-        Classe classe = classeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable"));
+        Classe classe = tenantGuard.requireSameTenant(classeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
 
         classe.setNom(classeDetails.getNom());
         classe.setCapaciteMax(classeDetails.getCapaciteMax());
@@ -69,8 +72,8 @@ public class ClasseServiceImpl implements ClasseService {
         }
 
         if (enseignantPrincipalId != null) {
-            Enseignant principal = enseignantRepository.findById(enseignantPrincipalId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable"));
+            Enseignant principal = tenantGuard.requireSameTenant(enseignantRepository.findById(enseignantPrincipalId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable")));
             classe.setEnseignantPrincipal(principal);
         } else {
             classe.setEnseignantPrincipal(null);
@@ -81,7 +84,7 @@ public class ClasseServiceImpl implements ClasseService {
 
     @Override
     public Optional<Classe> trouverParId(Long id) {
-        return classeRepository.findById(id);
+        return classeRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
@@ -91,27 +94,16 @@ public class ClasseServiceImpl implements ClasseService {
 
     @Override
     public List<Classe> listerToutes() {
-        try {
-            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
-            if (current != null && current.getUtilisateur() != null) {
-                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
-                    return classeRepository.findAll();
-                }
-                if (current.getUtilisateur().getEtablissement() != null) {
-                    Long etabId = current.getUtilisateur().getEtablissement().getId();
-                    return classeRepository.findAll().stream()
-                            .filter(c -> c.getEtablissement() == null || etabId.equals(c.getEtablissement().getId()))
-                            .toList();
-                }
-            }
-        } catch (Exception ignored) {}
-        return classeRepository.findAll();
+        if (tenantGuard.crossTenant()) {
+            return classeRepository.findAll();
+        }
+        return classeRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
     }
 
     @Override
     public void supprimerClasse(Long id) {
-        Classe classe = classeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable ID : " + id));
+        Classe classe = tenantGuard.requireSameTenant(classeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable ID : " + id)));
         classeRepository.delete(classe);
     }
 }

@@ -13,12 +13,24 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      # L'option "update" crée ou met à jour automatiquement les tables selon les entités Java JPA.
-      ddl-auto: update
-    show-sql: true
+      # Base NEUVE (prod cible) : mettre JPA_DDL_AUTO=validate et FLYWAY_ENABLED=true.
+      #   -> Flyway crée le schéma (db/migration/V1..Vn), Hibernate se contente de le valider.
+      # Base EXISTANTE (déploiement Render actuel) : laisser "update" et FLYWAY_ENABLED=false.
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    # Journalisation SQL désactivée par défaut (bruit + coût en production).
+    # Activer en local avec JPA_SHOW_SQL=true.
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        format_sql: true
+        format_sql: ${JPA_SHOW_SQL:false}
+
+  # Migrations de schéma versionnées (src/main/resources/db/migration).
+  # Désactivé par défaut pour ne pas heurter une base déjà créée par Hibernate.
+  # Sur une base neuve : FLYWAY_ENABLED=true (+ JPA_DDL_AUTO=validate).
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    baseline-on-migrate: false
+    locations: classpath:db/migration
 
   # Configuration de l'email via Brevo SMTP (utilisant des variables d'environnement avec valeurs par défaut)
   mail:
@@ -38,10 +50,16 @@ server:
   port: ${PORT:8089}
 
 jwt:
-  secret: ${JWT_SECRET:gestion-scolaire-jwt-secret-key-2026-changez-en-production}
-  expiration-ms: 86400000
+  # OBLIGATOIRE : aucune valeur par défaut. L'application refuse de démarrer si JWT_SECRET
+  # est absent, trop court (< 32 caractères) ou égal à la valeur d'exemple publique.
+  # Générer : openssl rand -base64 48
+  secret: ${JWT_SECRET:}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 # URL du frontend (utilisée dans les liens de réinitialisation)
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   password-reset-token-expiry-minutes: 30
+  cors:
+    # Origines autorisées (séparées par des virgules). À définir explicitement en production.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://gestion-scolaire-admin.vercel.app}

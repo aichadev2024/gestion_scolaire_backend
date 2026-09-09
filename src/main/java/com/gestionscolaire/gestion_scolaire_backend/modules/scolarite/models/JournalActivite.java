@@ -1,5 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,12 +11,13 @@ import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "journaux_activites")
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class JournalActivite {
+public class JournalActivite implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,6 +25,10 @@ public class JournalActivite {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "utilisateur_id")
     private Utilisateur utilisateur;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "etablissement_id")
+    private Etablissement etablissement;
 
     @Column(nullable = false, length = 100)
     private String action;

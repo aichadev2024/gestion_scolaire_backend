@@ -45,6 +45,9 @@ public class EleveServiceImpl implements EleveService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.modules.iam.services.UtilisateurService utilisateurService;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     private Parent resoudreParent(Long parentId) {
         if (parentId == null) return null;
 
@@ -67,23 +70,26 @@ public class EleveServiceImpl implements EleveService {
             }
         }
 
-        // 4. Fallback : Si des parents existent en base, lier au premier parent disponible
-        List<Parent> tousParents = parentRepository.findAll();
-        if (!tousParents.isEmpty()) {
-            return tousParents.get(0);
-        }
-
+        // Aucun fallback « premier parent disponible » : en multi-établissements, rattacher
+        // un élève à un parent arbitraire provoquerait un croisement de données entre écoles.
         throw new ResourceNotFoundException("Parent introuvable pour l'identifiant: " + parentId);
     }
 
     @Override
-    public Eleve inscrireEleve(Eleve eleve, Profil profil, Long parentId, Long classeId) {
+    public Eleve inscrireEleve(Eleve eleve, Profil profil, Long parentId, Long classeId, String motDePasseInitial) {
+        // Rattachement explicite à l'établissement de l'utilisateur courant (le TenantEntityListener sert de filet de sécurité).
+        try {
+            Etablissement etabCourant = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur().getEtablissement();
+            if (etabCourant != null) eleve.setEtablissement(etabCourant);
+        } catch (Exception ignored) {}
+
         if (parentId != null) {
             eleve.setParent(resoudreParent(parentId));
         }
         if (classeId != null) {
-            Classe classe = classeRepository.findById(classeId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable"));
+            Classe classe = tenantGuard.requireSameTenant(
+                    classeRepository.findById(classeId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
             
             // Vérification de la capacité maximale de la classe
             long effectifActuel = eleveRepository.findByClasseId(classeId).size();
@@ -120,7 +126,7 @@ public class EleveServiceImpl implements EleveService {
             Utilisateur user = Utilisateur.builder()
                     .username(username)
                     .email(email)
-                    .motDePasse("123456")
+                    .motDePasse(motDePasseInitial)
                     .estActif(true)
                     .estPremierLogin(true)
                     .etablissement(etablissement)
@@ -128,6 +134,7 @@ public class EleveServiceImpl implements EleveService {
 
             Utilisateur savedUser = utilisateurService.inscrire(user, profil, "ELEVE");
             profil = profilRepository.findByUtilisateurId(savedUser.getId()).orElse(profil);
+            eleve.setMotDePasseInitial(motDePasseInitial);
         } else {
             profil = profilRepository.save(profil);
         }
@@ -140,9 +147,9 @@ public class EleveServiceImpl implements EleveService {
 
     @Override
     public Eleve modifierEleve(Long id, Eleve eleveDetails, Profil profilDetails) {
-        Eleve eleve = eleveRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
-        
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+
         Profil profil = eleve.getProfil();
         profil.setPrenom(profilDetails.getPrenom());
         profil.setNom(profilDetails.getNom());
@@ -154,8 +161,9 @@ public class EleveServiceImpl implements EleveService {
         profilRepository.save(profil);
 
         if (eleveDetails.getClasse() != null) {
-            Classe nouvelleClasse = classeRepository.findById(eleveDetails.getClasse().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable"));
+            Classe nouvelleClasse = tenantGuard.requireSameTenant(
+                    classeRepository.findById(eleveDetails.getClasse().getId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
             eleve.setClasse(nouvelleClasse);
         }
 
@@ -169,21 +177,24 @@ public class EleveServiceImpl implements EleveService {
     @Override
     public Optional<Eleve> trouverParId(Long id) {
         Optional<Eleve> eleve = eleveRepository.findById(id);
-        if (eleve.isPresent()) return eleve;
 
-        // Fallback 1: ID du compte utilisateur de l'élève
-        eleve = eleveRepository.findByProfilUtilisateurId(id);
-        if (eleve.isPresent()) return eleve;
+        if (eleve.isEmpty()) {
+            // Fallback 1: ID du compte utilisateur de l'élève
+            eleve = eleveRepository.findByProfilUtilisateurId(id);
+        }
+        if (eleve.isEmpty()) {
+            // Fallback 2: ID du compte utilisateur du parent
+            List<Eleve> enfantsParUser = eleveRepository.findByParentProfilUtilisateurId(id);
+            if (!enfantsParUser.isEmpty()) eleve = Optional.of(enfantsParUser.get(0));
+        }
+        if (eleve.isEmpty()) {
+            // Fallback 3: ID direct de la fiche Parent
+            List<Eleve> enfantsParParent = eleveRepository.findByParentId(id);
+            if (!enfantsParParent.isEmpty()) eleve = Optional.of(enfantsParParent.get(0));
+        }
 
-        // Fallback 2: ID du compte utilisateur du parent
-        List<Eleve> enfantsParUser = eleveRepository.findByParentProfilUtilisateurId(id);
-        if (!enfantsParUser.isEmpty()) return Optional.of(enfantsParUser.get(0));
-
-        // Fallback 3: ID direct de la fiche Parent
-        List<Eleve> enfantsParParent = eleveRepository.findByParentId(id);
-        if (!enfantsParParent.isEmpty()) return Optional.of(enfantsParParent.get(0));
-
-        return Optional.empty();
+        // Cloisonnement : un élève d'un autre établissement est traité comme inexistant.
+        return eleve.filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
@@ -193,7 +204,7 @@ public class EleveServiceImpl implements EleveService {
 
     @Override
     public List<Eleve> listerElevesParClasse(Long classeId) {
-        return eleveRepository.findByClasseId(classeId);
+        return tenantGuard.filterSameTenant(eleveRepository.findByClasseId(classeId));
     }
 
     @Override
@@ -224,7 +235,8 @@ public class EleveServiceImpl implements EleveService {
         resultats.addAll(eleveRepository.findByParentIdOrParentSecondaireId(parentId, parentId));
         resultats.addAll(eleveRepository.findByParentProfilUtilisateurIdOrParentSecondaireProfilUtilisateurId(parentId, parentId));
 
-        // 4. Si la recherche par ID est partielle, matcher par téléphone ou email du profil parent
+        // 4. Si la recherche par ID est partielle, matcher par téléphone ou email du profil parent.
+        //    Recherche restreinte à l'établissement courant (jamais sur toute la base).
         Optional<Utilisateur> parentUserOpt = utilisateurRepository.findById(parentId);
         if (parentUserOpt.isPresent()) {
             Utilisateur parentUser = parentUserOpt.get();
@@ -232,8 +244,10 @@ public class EleveServiceImpl implements EleveService {
             String pPhone = (userProfil != null) ? userProfil.getTelephone() : null;
             String pEmail = parentUser.getEmail();
 
-            List<Eleve> tousEleves = eleveRepository.findAll();
-            for (Eleve e : tousEleves) {
+            List<Eleve> perimetre = tenantGuard.crossTenant()
+                    ? eleveRepository.findAll()
+                    : eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+            for (Eleve e : perimetre) {
                 if (e.getParent() != null && e.getParent().getProfil() != null) {
                     Profil prof = e.getParent().getProfil();
                     if ((pPhone != null && !pPhone.trim().isEmpty() && pPhone.equalsIgnoreCase(prof.getTelephone())) ||
@@ -244,48 +258,30 @@ public class EleveServiceImpl implements EleveService {
             }
         }
 
-        return new ArrayList<>(resultats);
+        // Cloisonnement final : ne renvoyer que les élèves de l'établissement courant.
+        return new ArrayList<>(tenantGuard.filterSameTenant(resultats));
     }
 
     @Override
     public List<Eleve> listerTous() {
-        try {
-            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
-            if (current != null && current.getUtilisateur() != null) {
-                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
-                    return eleveRepository.findAll();
-                }
-                if (current.getUtilisateur().getEtablissement() != null) {
-                    Long etabId = current.getUtilisateur().getEtablissement().getId();
-                    return eleveRepository.findAll().stream()
-                            .filter(e -> {
-                                if (e.getClasse() != null && e.getClasse().getEtablissement() != null) {
-                                    return etabId.equals(e.getClasse().getEtablissement().getId());
-                                }
-                                if (e.getProfil() != null && e.getProfil().getUtilisateur() != null && e.getProfil().getUtilisateur().getEtablissement() != null) {
-                                    return etabId.equals(e.getProfil().getUtilisateur().getEtablissement().getId());
-                                }
-                                return true;
-                            })
-                            .toList();
-                }
-            }
-        } catch (Exception ignored) {}
-        return eleveRepository.findAll();
+        if (tenantGuard.crossTenant()) {
+            return eleveRepository.findAll();
+        }
+        return eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
     }
 
     @Override
     public void archiverEleve(Long id) {
-        Eleve eleve = eleveRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
         eleve.setStatut("ARCHIVE");
         eleveRepository.save(eleve);
     }
 
     @Override
     public void supprimerEleve(Long id) {
-        Eleve eleve = eleveRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id)));
         eleveRepository.delete(eleve);
     }
 }

@@ -18,11 +18,22 @@ import com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.dto.VerifyOtpRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Random;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+
+    /** Durée de validité d'un code OTP (doit rester cohérent avec le texte de l'e-mail). */
+    private static final int OTP_VALIDITE_MINUTES = 10;
+    /** Nombre maximum de tentatives OTP échouées avant verrouillage du code. */
+    private static final int OTP_MAX_TENTATIVES = 5;
+    private static final SecureRandom OTP_RANDOM = new SecureRandom();
+
+    /** Génère un code OTP à 6 chiffres cryptographiquement aléatoire (000000–999999). */
+    private static String genererCodeOtp() {
+        return String.format("%06d", OTP_RANDOM.nextInt(1_000_000));
+    }
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -86,9 +97,10 @@ public class AuthServiceImpl implements AuthService {
         // Première connexion : Envoi d'un OTP par Email uniquement si l'utilisateur possède une adresse e-mail
         if (Boolean.TRUE.equals(utilisateur.getEstPremierLogin())) {
             if (utilisateur.getEmail() != null && !utilisateur.getEmail().isBlank()) {
-                String otpCode = String.format("%06d", new Random().nextInt(900000) + 100000);
+                String otpCode = genererCodeOtp();
                 utilisateur.setOtpCode(otpCode);
-                utilisateur.setOtpExpiry(LocalDateTime.now().plusMinutes(15));
+                utilisateur.setOtpExpiry(LocalDateTime.now().plusMinutes(OTP_VALIDITE_MINUTES));
+                utilisateur.setOtpTentatives(0);
                 utilisateurRepository.save(utilisateur);
 
                 emailService.sendOtpEmail(utilisateur, otpCode);
@@ -149,18 +161,42 @@ public class AuthServiceImpl implements AuthService {
         Utilisateur utilisateur = utilisateurRepository.findById(request.getUtilisateurId())
                 .orElseThrow(() -> new BadRequestException("Utilisateur introuvable."));
 
-        if (utilisateur.getOtpCode() == null || !utilisateur.getOtpCode().equals(request.getOtpCode().trim())) {
-            throw new BadRequestException("Le code OTP saisi est incorrect. Veuillez vérifier le code reçu par email.");
+        if (utilisateur.getOtpCode() == null || utilisateur.getOtpExpiry() == null) {
+            throw new BadRequestException("Aucun code OTP en attente. Veuillez vous reconnecter pour en recevoir un nouveau.");
         }
 
-        if (utilisateur.getOtpExpiry() == null || LocalDateTime.now().isAfter(utilisateur.getOtpExpiry())) {
-            throw new BadRequestException("Le code OTP a expiré. Veuillez cliquer sur 'Renvoyer le code' pour en recevoir un nouveau par email.");
+        if (LocalDateTime.now().isAfter(utilisateur.getOtpExpiry())) {
+            utilisateur.setOtpCode(null);
+            utilisateur.setOtpExpiry(null);
+            utilisateur.setOtpTentatives(0);
+            utilisateurRepository.save(utilisateur);
+            throw new BadRequestException("Le code OTP a expiré. Veuillez cliquer sur « Renvoyer le code » pour en recevoir un nouveau par email.");
+        }
+
+        int tentatives = utilisateur.getOtpTentatives() == null ? 0 : utilisateur.getOtpTentatives();
+        if (tentatives >= OTP_MAX_TENTATIVES) {
+            utilisateur.setOtpCode(null);
+            utilisateur.setOtpExpiry(null);
+            utilisateur.setOtpTentatives(0);
+            utilisateurRepository.save(utilisateur);
+            throw new BadRequestException("Trop de tentatives échouées. Ce code a été invalidé — cliquez sur « Renvoyer le code ».");
+        }
+
+        if (!utilisateur.getOtpCode().equals(request.getOtpCode().trim())) {
+            int restant = OTP_MAX_TENTATIVES - (tentatives + 1);
+            utilisateur.setOtpTentatives(tentatives + 1);
+            utilisateurRepository.save(utilisateur);
+            if (restant <= 0) {
+                throw new BadRequestException("Code OTP incorrect. Ce code a été invalidé après trop de tentatives — cliquez sur « Renvoyer le code ».");
+            }
+            throw new BadRequestException("Code OTP incorrect. Il vous reste " + restant + " tentative(s).");
         }
 
         // Validation réussie
         utilisateur.setEstPremierLogin(false);
         utilisateur.setOtpCode(null);
         utilisateur.setOtpExpiry(null);
+        utilisateur.setOtpTentatives(0);
         utilisateurRepository.save(utilisateur);
 
         Profil profil = profilRepository.findByUtilisateurId(utilisateur.getId()).orElse(null);
@@ -205,9 +241,10 @@ public class AuthServiceImpl implements AuthService {
         Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
                 .orElseThrow(() -> new BadRequestException("Utilisateur introuvable."));
 
-        String otpCode = String.format("%06d", new Random().nextInt(900000) + 100000);
+        String otpCode = genererCodeOtp();
         utilisateur.setOtpCode(otpCode);
-        utilisateur.setOtpExpiry(LocalDateTime.now().plusMinutes(15));
+        utilisateur.setOtpExpiry(LocalDateTime.now().plusMinutes(OTP_VALIDITE_MINUTES));
+        utilisateur.setOtpTentatives(0);
         utilisateurRepository.save(utilisateur);
 
         emailService.sendOtpEmail(utilisateur, otpCode);

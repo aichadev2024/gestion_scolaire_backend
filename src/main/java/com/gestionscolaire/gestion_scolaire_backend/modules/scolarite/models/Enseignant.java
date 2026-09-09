@@ -1,5 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Profil;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,12 +11,13 @@ import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "enseignants")
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Enseignant {
+public class Enseignant implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,6 +31,14 @@ public class Enseignant {
 
     @Column(columnDefinition = "TEXT")
     private String biographie;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "etablissement_id")
+    private Etablissement etablissement;
+
+    /** Non persisté : mot de passe initial généré à la création, renvoyé une seule fois à l'admin. */
+    @Transient
+    private String motDePasseInitial;
 
     @CreationTimestamp
     @Column(name = "date_creation", nullable = false, updatable = false)

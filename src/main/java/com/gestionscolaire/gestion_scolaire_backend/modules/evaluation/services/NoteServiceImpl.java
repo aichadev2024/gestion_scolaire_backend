@@ -38,13 +38,16 @@ public class NoteServiceImpl implements NoteService {
     @Autowired
     private UtilisateurRepository utilisateurRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     @Override
     public Note enregistrerNote(Note note, Long eleveId, Long classeMatiereId, Long userCreateurId) {
-        Eleve eleve = eleveRepository.findById(eleveId)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
-        
-        ClasseMatiere classeMatiere = classeMatiereRepository.findById(classeMatiereId)
-                .orElseThrow(() -> new ResourceNotFoundException("ClasseMatiere introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+
+        ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
+                .orElseThrow(() -> new ResourceNotFoundException("ClasseMatiere introuvable")));
 
         // Validation de note
         if (note.getValeur() < 0 || note.getValeur() > note.getNoteMax()) {
@@ -53,6 +56,7 @@ public class NoteServiceImpl implements NoteService {
 
         note.setEleve(eleve);
         note.setClasseMatiere(classeMatiere);
+        note.setEtablissement(eleve.getEtablissement());
 
         // Verification du verrouillage du bulletin
         bulletinRepository.findByEleveIdAndPeriodeAndAnneeScolaire(
@@ -73,12 +77,12 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     public List<Note> listerNotesEleve(Long eleveId) {
-        return noteRepository.findByEleveId(eleveId);
+        return tenantGuard.filterSameTenant(noteRepository.findByEleveId(eleveId));
     }
 
     @Override
     public List<Note> listerNotesParClasseMatiere(Long classeMatiereId) {
-        return noteRepository.findByClasseMatiereId(classeMatiereId);
+        return tenantGuard.filterSameTenant(noteRepository.findByClasseMatiereId(classeMatiereId));
     }
 
     @Override
@@ -100,8 +104,8 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     public Double calculerMoyenneGeneraleEleve(Long eleveId, String periode) {
-        Eleve eleve = eleveRepository.findById(eleveId)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
 
         if (eleve.getClasse() == null) {
             return 0.0;

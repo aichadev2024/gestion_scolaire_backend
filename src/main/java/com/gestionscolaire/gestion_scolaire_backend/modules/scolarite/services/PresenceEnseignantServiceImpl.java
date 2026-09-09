@@ -18,19 +18,22 @@ public class PresenceEnseignantServiceImpl implements PresenceEnseignantService 
 
     private final PresenceEnseignantRepository presenceEnseignantRepository;
     private final EnseignantRepository enseignantRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
     public PresenceEnseignantServiceImpl(
             PresenceEnseignantRepository presenceEnseignantRepository,
-            EnseignantRepository enseignantRepository
+            EnseignantRepository enseignantRepository,
+            com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard
     ) {
         this.presenceEnseignantRepository = presenceEnseignantRepository;
         this.enseignantRepository = enseignantRepository;
+        this.tenantGuard = tenantGuard;
     }
 
     @Override
     public PresenceEnseignant enregistrerPresence(PresenceEnseignant presence, Long enseignantId) {
-        Enseignant enseignant = enseignantRepository.findById(enseignantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable"));
+        Enseignant enseignant = tenantGuard.requireSameTenant(enseignantRepository.findById(enseignantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable")));
 
         Optional<PresenceEnseignant> dejaExiste = presenceEnseignantRepository.findByEnseignantIdAndDate(enseignantId, presence.getDate());
         if (dejaExiste.isPresent()) {
@@ -43,16 +46,20 @@ public class PresenceEnseignantServiceImpl implements PresenceEnseignantService 
         }
 
         presence.setEnseignant(enseignant);
+        presence.setEtablissement(enseignant.getEtablissement());
         return presenceEnseignantRepository.save(presence);
     }
 
     @Override
     public List<PresenceEnseignant> listerParDate(LocalDate date) {
-        return presenceEnseignantRepository.findByDate(date);
+        if (tenantGuard.crossTenant()) {
+            return presenceEnseignantRepository.findByDate(date);
+        }
+        return presenceEnseignantRepository.findByEtablissementIdAndDate(tenantGuard.requireEtablissementId(), date);
     }
 
     @Override
     public List<PresenceEnseignant> listerParEnseignant(Long enseignantId) {
-        return presenceEnseignantRepository.findByEnseignantId(enseignantId);
+        return tenantGuard.filterSameTenant(presenceEnseignantRepository.findByEnseignantId(enseignantId));
     }
 }

@@ -1,17 +1,21 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalTime;
 
 @Entity
 @Table(name = "emplois_du_temps")
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EmploiDuTemps {
+public class EmploiDuTemps implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,6 +27,10 @@ public class EmploiDuTemps {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "classe_id", nullable = true)
     private Classe classe;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "etablissement_id")
+    private Etablissement etablissement;
 
     @Column(name = "type_creneau", length = 30)
     @Builder.Default

@@ -32,8 +32,11 @@ public class EnseignantController {
     public ResponseEntity<EnseignantResponse> creer(@Valid @RequestBody EnseignantRequest request) {
         Enseignant enseignant = Enseignant.builder().biographie(request.getBiographie()).build();
         Profil profil = dtoMapper.toProfil(request.getProfil());
-        Enseignant saved = enseignantService.creerEnseignant(enseignant, profil);
-        return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toEnseignantResponse(saved));
+        String motDePasseInitial = com.gestionscolaire.gestion_scolaire_backend.core.security.PasswordGenerator.generer();
+        Enseignant saved = enseignantService.creerEnseignant(enseignant, profil, motDePasseInitial);
+        EnseignantResponse response = dtoMapper.toEnseignantResponse(saved);
+        response.setMotDePasseInitial(saved.getMotDePasseInitial());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping

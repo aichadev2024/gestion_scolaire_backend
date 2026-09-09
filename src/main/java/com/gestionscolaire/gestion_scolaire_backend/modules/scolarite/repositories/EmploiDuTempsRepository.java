@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface EmploiDuTempsRepository extends JpaRepository<EmploiDuTemps, Long> {
+    List<EmploiDuTemps> findByEtablissementId(Long etablissementId);
     List<EmploiDuTemps> findByClasseMatiereClasseId(Long classeId);
     List<EmploiDuTemps> findByClasseId(Long classeId);
     List<EmploiDuTemps> findByClasseIdOrClasseMatiereClasseId(Long classeId, Long classeMatiereClasseId);

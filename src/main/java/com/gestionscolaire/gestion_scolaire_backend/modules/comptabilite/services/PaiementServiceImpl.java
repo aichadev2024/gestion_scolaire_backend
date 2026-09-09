@@ -36,14 +36,17 @@ public class PaiementServiceImpl implements PaiementService {
     @Autowired
     private UtilisateurRepository utilisateurRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     @Override
     public Paiement enregistrerPaiement(Paiement paiement, Long eleveId, Long fraisId, Long userReceptionnaireId) {
-        Eleve eleve = eleveRepository.findById(eleveId)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
 
         if (fraisId != null) {
-            FraisScolarite frais = fraisScolariteRepository.findById(fraisId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Frais de scolarité introuvables"));
+            FraisScolarite frais = tenantGuard.requireSameTenant(fraisScolariteRepository.findById(fraisId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Frais de scolarité introuvables")));
             paiement.setFraisScolarite(frais);
         }
 
@@ -56,24 +59,25 @@ public class PaiementServiceImpl implements PaiementService {
         String receiptNum = "REC-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 5).toUpperCase();
         paiement.setNumeroRecu(receiptNum);
         paiement.setEleve(eleve);
+        paiement.setEtablissement(eleve.getEtablissement());
 
         return paiementRepository.save(paiement);
     }
 
     @Override
     public List<Paiement> listerPaiementsEleve(Long eleveId) {
-        return paiementRepository.findByEleveId(eleveId);
+        return tenantGuard.filterSameTenant(paiementRepository.findByEleveId(eleveId));
     }
 
     @Override
     public Optional<Paiement> trouverParNumeroRecu(String numeroRecu) {
-        return paiementRepository.findByNumeroRecu(numeroRecu);
+        return paiementRepository.findByNumeroRecu(numeroRecu).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
     public Double calculerSoldeRestantEleve(Long eleveId) {
-        Eleve eleve = eleveRepository.findById(eleveId)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
 
         if (eleve.getClasse() == null) {
             return 0.0;

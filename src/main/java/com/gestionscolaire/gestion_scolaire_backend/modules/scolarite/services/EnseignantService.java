@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EnseignantService {
-    Enseignant creerEnseignant(Enseignant enseignant, Profil profil);
+    Enseignant creerEnseignant(Enseignant enseignant, Profil profil, String motDePasseInitial);
     Enseignant modifierEnseignant(Long id, Enseignant enseignantDetails, Profil profilDetails);
     Optional<Enseignant> trouverParId(Long id);
     Optional<Enseignant> trouverParMatricule(String matricule);

@@ -29,8 +29,11 @@ public class EnseignantServiceImpl implements EnseignantService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository utilisateurRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     @Override
-    public Enseignant creerEnseignant(Enseignant enseignant, Profil profil) {
+    public Enseignant creerEnseignant(Enseignant enseignant, Profil profil, String motDePasseInitial) {
         // 1. Génération automatique du matricule unique pour l'enseignant
         String seq = String.format("%04d", enseignantRepository.count() + 1);
         String matricule = "T-GEN-" + seq;
@@ -60,7 +63,7 @@ public class EnseignantServiceImpl implements EnseignantService {
         com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur user = com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur.builder()
                 .username(username)
                 .email(email)
-                .motDePasse("123456") // Mot de passe temporaire par défaut
+                .motDePasse(motDePasseInitial)
                 .estActif(true)
                 .estPremierLogin(true)
                 .etablissement(etablissement)
@@ -69,14 +72,17 @@ public class EnseignantServiceImpl implements EnseignantService {
         com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur savedUser = utilisateurService.inscrire(user, profil, "ENSEIGNANT");
         profil = profilRepository.findByUtilisateurId(savedUser.getId()).orElse(profil);
         enseignant.setProfil(profil);
+        if (etablissement != null) enseignant.setEtablissement(etablissement);
 
-        return enseignantRepository.save(enseignant);
+        Enseignant saved = enseignantRepository.save(enseignant);
+        saved.setMotDePasseInitial(motDePasseInitial);
+        return saved;
     }
 
     @Override
     public Enseignant modifierEnseignant(Long id, Enseignant enseignantDetails, Profil profilDetails) {
-        Enseignant enseignant = enseignantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable"));
+        Enseignant enseignant = tenantGuard.requireSameTenant(enseignantRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable")));
 
         Profil profil = enseignant.getProfil();
         profil.setPrenom(profilDetails.getPrenom());
@@ -102,42 +108,26 @@ public class EnseignantServiceImpl implements EnseignantService {
 
     @Override
     public Optional<Enseignant> trouverParId(Long id) {
-        return enseignantRepository.findById(id);
+        return enseignantRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
     public Optional<Enseignant> trouverParMatricule(String matricule) {
-        return enseignantRepository.findByMatricule(matricule);
+        return enseignantRepository.findByMatricule(matricule).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
     public List<Enseignant> listerTous() {
-        try {
-            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
-            if (current != null && current.getUtilisateur() != null) {
-                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
-                    return enseignantRepository.findAll();
-                }
-                if (current.getUtilisateur().getEtablissement() != null) {
-                    Long etabId = current.getUtilisateur().getEtablissement().getId();
-                    return enseignantRepository.findAll().stream()
-                            .filter(ens -> {
-                                if (ens.getProfil() != null && ens.getProfil().getUtilisateur() != null && ens.getProfil().getUtilisateur().getEtablissement() != null) {
-                                    return etabId.equals(ens.getProfil().getUtilisateur().getEtablissement().getId());
-                                }
-                                return true;
-                            })
-                            .toList();
-                }
-            }
-        } catch (Exception ignored) {}
-        return enseignantRepository.findAll();
+        if (tenantGuard.crossTenant()) {
+            return enseignantRepository.findAll();
+        }
+        return enseignantRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
     }
 
     @Override
     public void supprimerEnseignant(Long id) {
-        Enseignant enseignant = enseignantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable ID : " + id));
+        Enseignant enseignant = tenantGuard.requireSameTenant(enseignantRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable ID : " + id)));
         enseignantRepository.delete(enseignant);
     }
 }

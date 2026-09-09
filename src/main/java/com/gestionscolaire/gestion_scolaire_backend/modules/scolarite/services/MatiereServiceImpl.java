@@ -16,9 +16,12 @@ import java.util.Optional;
 public class MatiereServiceImpl implements MatiereService {
 
     private final MatiereRepository matiereRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
-    public MatiereServiceImpl(MatiereRepository matiereRepository) {
+    public MatiereServiceImpl(MatiereRepository matiereRepository,
+                              com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard) {
         this.matiereRepository = matiereRepository;
+        this.tenantGuard = tenantGuard;
     }
 
     private String genererCodeAutomatique(String nom) {
@@ -54,8 +57,8 @@ public class MatiereServiceImpl implements MatiereService {
 
     @Override
     public Matiere modifierMatiere(Long id, Matiere matiereDetails) {
-        Matiere matiere = matiereRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Matière introuvable"));
+        Matiere matiere = tenantGuard.requireSameTenant(matiereRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Matière introuvable")));
 
         if (matiereDetails.getCode() == null || matiereDetails.getCode().isBlank()) {
             if (matiere.getCode() == null || matiere.getCode().isBlank()) {
@@ -76,7 +79,7 @@ public class MatiereServiceImpl implements MatiereService {
 
     @Override
     public Optional<Matiere> trouverParId(Long id) {
-        return matiereRepository.findById(id);
+        return matiereRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
@@ -86,29 +89,17 @@ public class MatiereServiceImpl implements MatiereService {
 
     @Override
     public List<Matiere> listerToutes() {
-        try {
-            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
-            if (current != null && current.getUtilisateur() != null) {
-                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
-                    return matiereRepository.findAll();
-                }
-                if (current.getUtilisateur().getEtablissement() != null) {
-                    Long etabId = current.getUtilisateur().getEtablissement().getId();
-                    return matiereRepository.findAll().stream()
-                            .filter(m -> m.getEtablissement() == null || etabId.equals(m.getEtablissement().getId()))
-                            .toList();
-                }
-            }
-        } catch (Exception ignored) {}
-        return matiereRepository.findAll();
+        if (tenantGuard.crossTenant()) {
+            return matiereRepository.findAll();
+        }
+        return matiereRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
     }
 
     @Override
     public void supprimerMatiere(Long id) {
-        if (!matiereRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Matière introuvable");
-        }
-        matiereRepository.deleteById(id);
+        Matiere matiere = tenantGuard.requireSameTenant(matiereRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Matière introuvable")));
+        matiereRepository.delete(matiere);
     }
 }
 

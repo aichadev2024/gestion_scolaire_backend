@@ -18,47 +18,51 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
-    public NotificationServiceImpl(NotificationRepository notificationRepository, UtilisateurRepository utilisateurRepository) {
+    public NotificationServiceImpl(NotificationRepository notificationRepository, UtilisateurRepository utilisateurRepository,
+                                   com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard) {
         this.notificationRepository = notificationRepository;
         this.utilisateurRepository = utilisateurRepository;
+        this.tenantGuard = tenantGuard;
     }
 
     @Override
     public Notification envoyerNotification(Notification notification, Long expediteurId, Long destinataireId) {
-        Utilisateur destinataire = utilisateurRepository.findById(destinataireId)
-                .orElseThrow(() -> new ResourceNotFoundException("Destinataire introuvable"));
+        Utilisateur destinataire = tenantGuard.requireSameTenant(utilisateurRepository.findById(destinataireId)
+                .orElseThrow(() -> new ResourceNotFoundException("Destinataire introuvable")));
 
         if (expediteurId != null) {
-            Utilisateur expediteur = utilisateurRepository.findById(expediteurId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Expéditeur introuvable"));
+            Utilisateur expediteur = tenantGuard.requireSameTenant(utilisateurRepository.findById(expediteurId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Expéditeur introuvable")));
             notification.setExpediteur(expediteur);
         }
 
         notification.setDestinataire(destinataire);
+        notification.setEtablissement(destinataire.getEtablissement());
         notification.setEstLu(false);
         return notificationRepository.save(notification);
     }
 
     @Override
     public List<Notification> listerPourDestinataire(Long destinataireId) {
-        return notificationRepository.findByDestinataireIdOrderByDateCreationDesc(destinataireId);
+        return tenantGuard.filterSameTenant(notificationRepository.findByDestinataireIdOrderByDateCreationDesc(destinataireId));
     }
 
     @Override
     public List<Notification> listerNonLues(Long destinataireId) {
-        return notificationRepository.findByDestinataireIdAndEstLuOrderByDateCreationDesc(destinataireId, false);
+        return tenantGuard.filterSameTenant(notificationRepository.findByDestinataireIdAndEstLuOrderByDateCreationDesc(destinataireId, false));
     }
 
     @Override
     public Optional<Notification> trouverParId(Long id) {
-        return notificationRepository.findById(id);
+        return notificationRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
     public void marquerCommeLue(Long id) {
-        Notification notification = notificationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Notification introuvable"));
+        Notification notification = tenantGuard.requireSameTenant(notificationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification introuvable")));
         notification.setEstLu(true);
         notificationRepository.save(notification);
     }

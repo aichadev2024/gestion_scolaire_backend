@@ -11,6 +11,8 @@ import java.util.Optional;
 @Repository
 public interface PresenceEnseignantRepository extends JpaRepository<PresenceEnseignant, Long> {
     List<PresenceEnseignant> findByDate(LocalDate date);
+    List<PresenceEnseignant> findByEtablissementId(Long etablissementId);
+    List<PresenceEnseignant> findByEtablissementIdAndDate(Long etablissementId, LocalDate date);
     List<PresenceEnseignant> findByEnseignantId(Long enseignantId);
     Optional<PresenceEnseignant> findByEnseignantIdAndDate(Long enseignantId, LocalDate date);
 }

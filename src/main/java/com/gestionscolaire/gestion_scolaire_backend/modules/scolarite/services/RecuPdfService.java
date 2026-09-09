@@ -22,14 +22,17 @@ import java.time.format.DateTimeFormatter;
 public class RecuPdfService {
 
     private final PaiementRepository paiementRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
-    public RecuPdfService(PaiementRepository paiementRepository) {
+    public RecuPdfService(PaiementRepository paiementRepository,
+                          com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard) {
         this.paiementRepository = paiementRepository;
+        this.tenantGuard = tenantGuard;
     }
 
     public byte[] genererRecuPdf(String numeroRecu) {
-        Paiement paiement = paiementRepository.findByNumeroRecu(numeroRecu)
-                .orElseThrow(() -> new ResourceNotFoundException("Paiement introuvable pour le reçu : " + numeroRecu));
+        Paiement paiement = tenantGuard.requireSameTenant(paiementRepository.findByNumeroRecu(numeroRecu)
+                .orElseThrow(() -> new ResourceNotFoundException("Paiement introuvable pour le reçu : " + numeroRecu)));
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             Document document = new Document();

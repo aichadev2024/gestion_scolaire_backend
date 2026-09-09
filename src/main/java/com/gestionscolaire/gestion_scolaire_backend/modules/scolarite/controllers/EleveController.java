@@ -34,8 +34,11 @@ public class EleveController {
     public ResponseEntity<EleveResponse> inscrire(@Valid @RequestBody EleveInscriptionRequest request) {
         Eleve eleve = Eleve.builder().build();
         Profil profil = dtoMapper.toProfil(request.getProfil());
-        Eleve saved = eleveService.inscrireEleve(eleve, profil, request.getParentId(), request.getClasseId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toEleveResponse(saved));
+        String motDePasseInitial = com.gestionscolaire.gestion_scolaire_backend.core.security.PasswordGenerator.generer();
+        Eleve saved = eleveService.inscrireEleve(eleve, profil, request.getParentId(), request.getClasseId(), motDePasseInitial);
+        EleveResponse response = dtoMapper.toEleveResponse(saved);
+        response.setMotDePasseInitial(saved.getMotDePasseInitial());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping

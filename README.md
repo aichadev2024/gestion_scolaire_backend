@@ -6,8 +6,8 @@ API REST Java Spring Boot pour la gestion globale d'un établissement scolaire (
 
 ## 🛠️ Stack Technique
 
-- **Langage & Framework** : Java 21 / Spring Boot 3.x
-- **Securité** : Spring Security + Authentification JWT (JSON Web Token) + OTP 2FA par e-mail
+- **Langage & Framework** : Java 21 / Spring Boot 4.1
+- **Sécurité** : Spring Security + Authentification JWT (JSON Web Token) + OTP e-mail au premier login
 - **Base de données** : PostgreSQL + Hibernate JPA
 - **Service E-mail** : Brevo API / SMTP
 - **Outil de Build** : Maven (`mvnw`)
@@ -27,8 +27,12 @@ Pour des raisons de sécurité, aucun mot de passe n'est stocké en dur dans le 
    - `DATABASE_URL` : `jdbc:postgresql://localhost:5432/gestion_scolaire_db`
    - `DB_USERNAME` : Nom d'utilisateur PostgreSQL (ex: `postgres`)
    - `DB_PASSWORD` : Mot de passe de votre base locale
-   - `JWT_SECRET` : Clé secrète JWT (min 32 caractères)
+   - `JWT_SECRET` : Clé secrète JWT (**obligatoire**, min 32 caractères — `openssl rand -base64 48`)
    - `SMTP_USERNAME` & `SMTP_PASSWORD` : Vos identifiants SMTP Brevo (optionnel en dev)
+   - `JPA_SHOW_SQL` : `true` pour journaliser le SQL en local (défaut `false`)
+
+> Le schéma est géré par Hibernate (`ddl-auto`). Le fichier `schema.sql` historique a été retiré
+> (obsolète). Des migrations Flyway versionnées seront introduites en Phase 1.
 
 ---
 

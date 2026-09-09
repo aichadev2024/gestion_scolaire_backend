@@ -71,11 +71,12 @@ public class DataInitializer implements CommandLineRunner {
                 }
 
                 String email = username + "@netaa-ecole.ml";
+                String motDePasseProvisoire = com.gestionscolaire.gestion_scolaire_backend.core.security.PasswordGenerator.generer();
 
                 com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur user = com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur.builder()
                         .username(username)
                         .email(email)
-                        .motDePasse(passwordEncoder.encode("123456"))
+                        .motDePasse(passwordEncoder.encode(motDePasseProvisoire))
                         .role(roleEnseignant)
                         .estActif(true)
                         .build();
@@ -83,6 +84,9 @@ public class DataInitializer implements CommandLineRunner {
                 com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur savedUser = utilisateurRepository.save(user);
                 profil.setUtilisateur(savedUser);
                 profilRepository.save(profil);
+                System.out.println("[Auto-repair] Compte enseignant recréé pour le profil " + profil.getId()
+                        + " — identifiant: " + username + " — mot de passe provisoire: " + motDePasseProvisoire
+                        + " (à communiquer et à changer à la première connexion).");
             }
         } catch (Exception e) {
             System.err.println("Notice: Auto-repair profiles check: " + e.getMessage());

@@ -15,6 +15,8 @@ public class EnseignantResponse {
     private String matricule;
     private String biographie;
     private ProfilDto profil;
+    /** Renseigné uniquement dans la réponse de création : mot de passe initial à transmettre à l'enseignant. */
+    private String motDePasseInitial;
 }
 
 

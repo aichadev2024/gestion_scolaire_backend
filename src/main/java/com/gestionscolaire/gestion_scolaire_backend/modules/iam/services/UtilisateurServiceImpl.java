@@ -42,6 +42,9 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ParentRepository parentRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     @Override
     public Utilisateur inscrire(Utilisateur utilisateur, Profil profil, String nomRole) {
         Role role = roleRepository.findByNom(nomRole)
@@ -144,35 +147,24 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
     @Override
     public List<Utilisateur> listerTous() {
-        try {
-            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
-            if (current != null && current.getUtilisateur() != null) {
-                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
-                    return utilisateurRepository.findAll();
-                }
-                if (current.getUtilisateur().getEtablissement() != null) {
-                    Long etabId = current.getUtilisateur().getEtablissement().getId();
-                    return utilisateurRepository.findAll().stream()
-                            .filter(u -> u.getEtablissement() != null && etabId.equals(u.getEtablissement().getId()))
-                            .toList();
-                }
-            }
-        } catch (Exception ignored) {}
-        return utilisateurRepository.findAll();
+        if (tenantGuard.crossTenant()) {
+            return utilisateurRepository.findAll();
+        }
+        return utilisateurRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
     }
 
     @Override
     public void modifierStatut(Long id, boolean estActif) {
-        Utilisateur utilisateur = utilisateurRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
+        Utilisateur utilisateur = tenantGuard.requireSameTenant(utilisateurRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable")));
         utilisateur.setEstActif(estActif);
         utilisateurRepository.save(utilisateur);
     }
 
     @Override
     public Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole) {
-        Utilisateur utilisateur = utilisateurRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id));
+        Utilisateur utilisateur = tenantGuard.requireSameTenant(utilisateurRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id)));
 
         if (details.getUsername() != null && !details.getUsername().isBlank()) {
             utilisateur.setUsername(details.getUsername().trim());
@@ -209,8 +201,8 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
     @Override
     public void supprimerUtilisateur(Long id) {
-        Utilisateur utilisateur = utilisateurRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id));
+        Utilisateur utilisateur = tenantGuard.requireSameTenant(utilisateurRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id)));
 
         // Delete parent entry if role is PARENT
         try {

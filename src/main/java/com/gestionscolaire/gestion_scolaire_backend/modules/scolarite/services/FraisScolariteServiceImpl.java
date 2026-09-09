@@ -19,24 +19,28 @@ public class FraisScolariteServiceImpl implements FraisScolariteService {
 
     private final FraisScolariteRepository fraisScolariteRepository;
     private final ClasseRepository classeRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
-    public FraisScolariteServiceImpl(FraisScolariteRepository fraisScolariteRepository, ClasseRepository classeRepository) {
+    public FraisScolariteServiceImpl(FraisScolariteRepository fraisScolariteRepository, ClasseRepository classeRepository,
+                                     com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard) {
         this.fraisScolariteRepository = fraisScolariteRepository;
         this.classeRepository = classeRepository;
+        this.tenantGuard = tenantGuard;
     }
 
     @Override
     public FraisScolarite creerFrais(FraisScolarite frais, Long classeId) {
-        Classe classe = classeRepository.findById(classeId)
-                .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable"));
+        Classe classe = tenantGuard.requireSameTenant(classeRepository.findById(classeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
         frais.setClasse(classe);
+        frais.setEtablissement(classe.getEtablissement());
         return fraisScolariteRepository.save(frais);
     }
 
     @Override
     public FraisScolarite modifierFrais(Long id, FraisScolarite fraisDetails) {
-        FraisScolarite frais = fraisScolariteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Frais de scolarité introuvables"));
+        FraisScolarite frais = tenantGuard.requireSameTenant(fraisScolariteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Frais de scolarité introuvables")));
         frais.setTitre(fraisDetails.getTitre());
         frais.setMontant(fraisDetails.getMontant());
         frais.setDateEcheance(fraisDetails.getDateEcheance());
@@ -45,53 +49,27 @@ public class FraisScolariteServiceImpl implements FraisScolariteService {
 
     @Override
     public Optional<FraisScolarite> trouverParId(Long id) {
-        return fraisScolariteRepository.findById(id);
+        return fraisScolariteRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
     }
 
     @Override
     public List<FraisScolarite> listerParClasse(Long classeId) {
-        try {
-            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
-            if (current != null && current.getUtilisateur() != null) {
-                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
-                    return fraisScolariteRepository.findByClasseId(classeId);
-                }
-                if (current.getUtilisateur().getEtablissement() != null) {
-                    Long etabId = current.getUtilisateur().getEtablissement().getId();
-                    return fraisScolariteRepository.findByClasseId(classeId).stream()
-                            .filter(f -> f.getClasse() == null || f.getClasse().getEtablissement() == null || etabId.equals(f.getClasse().getEtablissement().getId()))
-                            .toList();
-                }
-            }
-        } catch (Exception ignored) {}
-        return fraisScolariteRepository.findByClasseId(classeId);
+        return tenantGuard.filterSameTenant(fraisScolariteRepository.findByClasseId(classeId));
     }
 
     @Override
     public List<FraisScolarite> listerTous() {
-        try {
-            com.gestionscolaire.gestion_scolaire_backend.core.security.CustomUserDetails current = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser();
-            if (current != null && current.getUtilisateur() != null) {
-                if ("SUPER_ADMIN".equalsIgnoreCase(current.getUtilisateur().getRole().getNom())) {
-                    return fraisScolariteRepository.findAll();
-                }
-                if (current.getUtilisateur().getEtablissement() != null) {
-                    Long etabId = current.getUtilisateur().getEtablissement().getId();
-                    return fraisScolariteRepository.findAll().stream()
-                            .filter(f -> f.getClasse() == null || f.getClasse().getEtablissement() == null || etabId.equals(f.getClasse().getEtablissement().getId()))
-                            .toList();
-                }
-            }
-        } catch (Exception ignored) {}
-        return fraisScolariteRepository.findAll();
+        if (tenantGuard.crossTenant()) {
+            return fraisScolariteRepository.findAll();
+        }
+        return fraisScolariteRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
     }
 
     @Override
     public void supprimerFrais(Long id) {
-        if (!fraisScolariteRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Frais de scolarité introuvables");
-        }
-        fraisScolariteRepository.deleteById(id);
+        FraisScolarite frais = tenantGuard.requireSameTenant(fraisScolariteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Frais de scolarité introuvables")));
+        fraisScolariteRepository.delete(frais);
     }
 }
 

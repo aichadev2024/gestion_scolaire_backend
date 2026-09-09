@@ -1,5 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -8,12 +11,13 @@ import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "presences")
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Presence {
+public class Presence implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -25,6 +29,10 @@ public class Presence {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "classe_matiere_id")
     private ClasseMatiere classeMatiere;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "etablissement_id")
+    private Etablissement etablissement;
 
     @Column(nullable = false)
     private LocalDate date;

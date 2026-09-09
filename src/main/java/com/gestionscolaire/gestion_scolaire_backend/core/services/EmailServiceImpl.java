@@ -100,7 +100,7 @@ public class EmailServiceImpl implements EmailService {
             return;
         }
 
-        String subject = "🔑 Code de Sécurité OTP Netaa École : " + otpCode;
+        String subject = "🔑 Votre code de sécurité Netaa École";
         String htmlBody = """
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
                 <div style="text-align: center; padding-bottom: 15px; border-bottom: 2px solid #1B365D;">
@@ -116,7 +116,7 @@ public class EmailServiceImpl implements EmailService {
             </div>
             """.formatted(otpCode);
 
-        logger.info("🔑 [SÉCURITÉ NETAA] CODE OTP GÉNÉRÉ POUR [{}] : {}", user.getEmail(), otpCode);
+        logger.info("🔑 [SÉCURITÉ] Code OTP généré pour [{}] — expédition en cours.", user.getEmail());
         sendMailInternal(user.getEmail(), subject, htmlBody);
     }
 

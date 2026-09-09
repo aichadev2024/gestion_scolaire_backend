@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface FraisScolariteRepository extends JpaRepository<FraisScolarite, Long> {
     List<FraisScolarite> findByClasseId(Long classeId);
+    List<FraisScolarite> findByEtablissementId(Long etablissementId);
 }
 
 

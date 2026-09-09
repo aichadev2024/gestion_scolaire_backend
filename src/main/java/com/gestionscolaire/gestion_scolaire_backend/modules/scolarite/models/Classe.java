@@ -1,5 +1,7 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
+import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -8,12 +10,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "classes")
+@EntityListeners(TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Classe {
+public class Classe implements TenantScoped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -2,10 +2,12 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositor
 
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
 import java.util.Optional;
 
 public interface EnseignantRepository extends JpaRepository<Enseignant, Long> {
     Optional<Enseignant> findByMatricule(String matricule);
+    List<Enseignant> findByEtablissementId(Long etablissementId);
 }
 
 

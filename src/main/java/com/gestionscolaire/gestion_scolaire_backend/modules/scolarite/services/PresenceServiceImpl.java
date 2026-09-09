@@ -33,29 +33,33 @@ public class PresenceServiceImpl implements PresenceService {
     @Autowired
     private ClasseMatiereRepository classeMatiereRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
     @Override
     public Presence enregistrerPresence(Presence presence, Long eleveId, Long classeMatiereId) {
-        Eleve eleve = eleveRepository.findById(eleveId)
-                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable"));
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
 
         if (classeMatiereId != null) {
-            ClasseMatiere classeMatiere = classeMatiereRepository.findById(classeMatiereId)
-                    .orElseThrow(() -> new ResourceNotFoundException("ClasseMatiere introuvable"));
+            ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
+                    .orElseThrow(() -> new ResourceNotFoundException("ClasseMatiere introuvable")));
             presence.setClasseMatiere(classeMatiere);
         }
 
         presence.setEleve(eleve);
+        presence.setEtablissement(eleve.getEtablissement());
         return presenceRepository.save(presence);
     }
 
     @Override
     public List<Presence> listerPresencesEleve(Long eleveId) {
-        return presenceRepository.findByEleveId(eleveId);
+        return tenantGuard.filterSameTenant(presenceRepository.findByEleveId(eleveId));
     }
 
     @Override
     public List<Presence> listerPresencesParClasseMatiereEtDate(Long classeMatiereId, LocalDate date) {
-        return presenceRepository.findByClasseMatiereIdAndDate(classeMatiereId, date);
+        return tenantGuard.filterSameTenant(presenceRepository.findByClasseMatiereIdAndDate(classeMatiereId, date));
     }
 }
 
