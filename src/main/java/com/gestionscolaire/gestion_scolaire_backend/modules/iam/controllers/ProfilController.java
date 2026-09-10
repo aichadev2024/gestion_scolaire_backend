@@ -1,5 +1,6 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.iam.controllers;
 
+import com.gestionscolaire.gestion_scolaire_backend.modules.iam.services.PhotoMigrationService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.services.ProfilPhotoService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,9 +15,11 @@ import java.util.Map;
 public class ProfilController {
 
     private final ProfilPhotoService photoService;
+    private final PhotoMigrationService migrationService;
 
-    public ProfilController(ProfilPhotoService photoService) {
+    public ProfilController(ProfilPhotoService photoService, PhotoMigrationService migrationService) {
         this.photoService = photoService;
+        this.migrationService = migrationService;
     }
 
     /** Upload / remplacement de la photo d'un profil. Renvoie l'URL publique. */
@@ -35,5 +38,16 @@ public class ProfilController {
     public ResponseEntity<Void> removePhoto(@PathVariable Long id) {
         photoService.removePhoto(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Migration ponctuelle : ré-upload vers R2 des photos encore stockées en base64.
+     * {@code ?dryRun=true} pour seulement compter les profils concernés.
+     */
+    @PostMapping("/photos/migration")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> migrerPhotos(
+            @RequestParam(name = "dryRun", defaultValue = "false") boolean dryRun) {
+        return ResponseEntity.ok(migrationService.migrerPhotosBase64(dryRun));
     }
 }
