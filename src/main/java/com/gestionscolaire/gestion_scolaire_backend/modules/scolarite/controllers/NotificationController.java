@@ -25,7 +25,7 @@ public class NotificationController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'ENSEIGNANT', 'PARENT', 'SECRETAIRE', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'ENSEIGNANT', 'PARENT', 'SECRETAIRE')")
     public ResponseEntity<Notification> envoyer(@Valid @RequestBody NotificationRequest request) {
         Notification notification = Notification.builder()
                 .titre(request.getTitre())
@@ -37,26 +37,26 @@ public class NotificationController {
     }
 
     @GetMapping("/destinataire/{destinataireId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'DIRECTEUR', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'COMPTABLE')")
     public ResponseEntity<List<Notification>> listerPourDestinataire(@PathVariable Long destinataireId) {
         return ResponseEntity.ok(notificationService.listerPourDestinataire(destinataireId));
     }
 
     @GetMapping("/destinataire/{destinataireId}/non-lues")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'DIRECTEUR', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'COMPTABLE')")
     public ResponseEntity<List<Notification>> listerNonLues(@PathVariable Long destinataireId) {
         return ResponseEntity.ok(notificationService.listerNonLues(destinataireId));
     }
 
     @PatchMapping("/{id}/lue")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'DIRECTEUR', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'COMPTABLE')")
     public ResponseEntity<Map<String, String>> marquerCommeLue(@PathVariable Long id) {
         notificationService.marquerCommeLue(id);
         return ResponseEntity.ok(Map.of("message", "Notification marquée comme lue"));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'DIRECTEUR', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'ENSEIGNANT', 'PARENT', 'ELEVE', 'SECRETAIRE', 'COMPTABLE')")
     public ResponseEntity<Notification> trouverParId(@PathVariable Long id) {
         return ResponseEntity.ok(notificationService.trouverParId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification introuvable")));

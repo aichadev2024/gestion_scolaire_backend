@@ -34,7 +34,6 @@ public class EmailServiceImpl implements EmailService {
         String rawRole = user.getRole() != null ? user.getRole().getNom() : "Utilisateur";
         String roleLabel = switch (rawRole.toUpperCase()) {
             case "SUPER_ADMIN" -> "Administrateur Général (Super-Admin)";
-            case "ADMIN" -> "Administrateur d'Établissement";
             case "DIRECTEUR" -> "Directeur d'Établissement";
             case "SECRETAIRE" -> "Secrétaire";
             case "COMPTABLE" -> "Comptable";

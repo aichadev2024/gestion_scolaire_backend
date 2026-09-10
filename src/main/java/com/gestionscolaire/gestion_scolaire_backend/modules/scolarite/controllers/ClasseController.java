@@ -27,7 +27,7 @@ public class ClasseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<ClasseResponse> creer(@Valid @RequestBody ClasseRequest request) {
         Classe classe = Classe.builder()
                 .nom(request.getNom())
@@ -59,7 +59,7 @@ public class ClasseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<ClasseResponse> modifier(@PathVariable Long id, @Valid @RequestBody ClasseRequest request) {
         Classe details = Classe.builder()
                 .nom(request.getNom())
@@ -71,7 +71,7 @@ public class ClasseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<java.util.Map<String, String>> supprimer(@PathVariable Long id) {
         classeService.supprimerClasse(id);
         return ResponseEntity.ok(java.util.Map.of("message", "Classe supprimée avec succès"));

@@ -24,7 +24,7 @@ public class FraisScolariteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE')")
     public ResponseEntity<FraisScolarite> creer(@Valid @RequestBody FraisScolariteRequest request) {
         FraisScolarite frais = FraisScolarite.builder()
                 .titre(request.getTitre())
@@ -42,20 +42,20 @@ public class FraisScolariteController {
     }
 
     @GetMapping("/classe/{classeId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE', 'DIRECTEUR', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE', 'PARENT')")
     public ResponseEntity<List<FraisScolarite>> listerParClasse(@PathVariable Long classeId) {
         return ResponseEntity.ok(fraisScolariteService.listerParClasse(classeId));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE', 'DIRECTEUR', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE', 'PARENT')")
     public ResponseEntity<FraisScolarite> trouverParId(@PathVariable Long id) {
         return ResponseEntity.ok(fraisScolariteService.trouverParId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Frais de scolarité introuvables")));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE')")
     public ResponseEntity<FraisScolarite> modifier(@PathVariable Long id, @Valid @RequestBody FraisScolariteRequest request) {
         FraisScolarite details = FraisScolarite.builder()
                 .titre(request.getTitre())
@@ -66,7 +66,7 @@ public class FraisScolariteController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
         fraisScolariteService.supprimerFrais(id);
         return ResponseEntity.ok(Map.of("message", "Frais supprimé"));

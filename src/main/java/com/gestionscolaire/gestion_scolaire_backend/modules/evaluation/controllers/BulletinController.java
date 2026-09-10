@@ -17,7 +17,7 @@ public class BulletinController {
     }
 
     @PostMapping("/generer")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<BulletinResponse> genererBulletin(
             @RequestParam Long eleveId,
             @RequestParam String periode,
@@ -27,7 +27,7 @@ public class BulletinController {
     }
 
     @GetMapping("/eleve/{eleveId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT', 'PARENT', 'ELEVE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT', 'PARENT', 'ELEVE')")
     public ResponseEntity<BulletinResponse> getBulletinDetails(
             @PathVariable Long eleveId,
             @RequestParam String periode,
@@ -37,7 +37,7 @@ public class BulletinController {
     }
 
     @PostMapping("/{id}/verrouiller")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<BulletinResponse> verrouillerBulletin(@PathVariable Long id) {
         return ResponseEntity.ok(bulletinService.verrouillerBulletin(id));
     }

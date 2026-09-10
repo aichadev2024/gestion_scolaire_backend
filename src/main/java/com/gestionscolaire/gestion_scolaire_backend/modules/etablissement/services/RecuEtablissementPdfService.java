@@ -86,7 +86,7 @@ public class RecuEtablissementPdfService {
             etabTable.setWidthPercentage(100);
             etabTable.setSpacingBefore(10f);
 
-            ajouterLigneHeader(etabTable, "INFORMATIONS ÉTABLISSEMENT", "DÉTAILS COMPTE ADMIN", headerFont);
+            ajouterLigneHeader(etabTable, "INFORMATIONS ÉTABLISSEMENT", "DÉTAILS COMPTE DIRECTEUR", headerFont);
             ajouterLigneDouble(etabTable, "Nom : " + etab.getNom(), "Code Système : " + etab.getCode(), normalFont);
             ajouterLigneDouble(etabTable, "Téléphone : " + (etab.getTelephone() != null ? etab.getTelephone() : "N/A"), "Statut : " + etab.getStatut(), normalFont);
             ajouterLigneDouble(etabTable, "Adresse : " + (etab.getAdresse() != null ? etab.getAdresse() : "N/A"), "Email Contact : " + (etab.getEmailContact() != null ? etab.getEmailContact() : "N/A"), normalFont);

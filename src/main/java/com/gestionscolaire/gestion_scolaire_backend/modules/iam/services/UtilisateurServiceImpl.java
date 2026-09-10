@@ -125,10 +125,10 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
     @Override
     public Utilisateur inscrirePremierAdmin(Utilisateur utilisateur, Profil profil) {
-        if (utilisateurRepository.existsByRoleNom("ADMIN")) {
-            throw new BadRequestException("Un administrateur existe déjà dans le système. La création d'autres administrateurs doit se faire par un administrateur connecté.");
+        if (utilisateurRepository.existsByRoleNom("DIRECTEUR")) {
+            throw new BadRequestException("Un directeur existe déjà pour cet établissement. La création d'autres comptes doit se faire par un directeur connecté.");
         }
-        return inscrire(utilisateur, profil, "ADMIN");
+        return inscrire(utilisateur, profil, "DIRECTEUR");
     }
 
     @Override

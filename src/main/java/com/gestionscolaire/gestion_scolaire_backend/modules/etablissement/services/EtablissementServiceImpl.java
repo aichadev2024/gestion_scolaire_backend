@@ -108,7 +108,7 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .build();
 
         Profil profil = dtoMapper.toProfil(request.getAdminProfil());
-        utilisateurService.inscrire(admin, profil, "ADMIN");
+        utilisateurService.inscrire(admin, profil, "DIRECTEUR");
 
         // Génération automatique du reçu PDF et envoi par e-mail
         try {
@@ -152,7 +152,7 @@ public class EtablissementServiceImpl implements EtablissementService {
 
         List<Utilisateur> users = utilisateurRepository.findByEtablissementId(etablissement.getId());
         Utilisateur admin = users.stream()
-                .filter(u -> u.getRole() != null && "ADMIN".equalsIgnoreCase(u.getRole().getNom()))
+                .filter(u -> u.getRole() != null && "DIRECTEUR".equalsIgnoreCase(u.getRole().getNom()))
                 .findFirst()
                 .orElse(users.isEmpty() ? null : users.get(0));
 

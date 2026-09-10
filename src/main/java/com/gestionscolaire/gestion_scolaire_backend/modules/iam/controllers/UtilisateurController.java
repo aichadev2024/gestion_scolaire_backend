@@ -32,7 +32,7 @@ public class UtilisateurController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<UtilisateurResponse> inscrire(@Valid @RequestBody RegisterUtilisateurRequest request) {
         Utilisateur utilisateur = Utilisateur.builder()
                 .username(request.getUsername())
@@ -46,7 +46,7 @@ public class UtilisateurController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<List<UtilisateurResponse>> listerTous() {
         List<UtilisateurResponse> response = utilisateurService.listerTous().stream()
                 .map(u -> dtoMapper.toUtilisateurResponse(u, profilRepository.findByUtilisateurId(u.getId()).orElse(null)))
@@ -55,7 +55,7 @@ public class UtilisateurController {
     }
 
     @PatchMapping("/{id}/statut")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<Map<String, String>> modifierStatut(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
         Boolean estActif = body.get("estActif");
         if (estActif == null) {
@@ -66,7 +66,7 @@ public class UtilisateurController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<UtilisateurResponse> modifier(@PathVariable Long id, @RequestBody RegisterUtilisateurRequest request) {
         Utilisateur details = Utilisateur.builder()
                 .username(request.getUsername())
@@ -80,7 +80,7 @@ public class UtilisateurController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
         utilisateurService.supprimerUtilisateur(id);
         return ResponseEntity.ok(Map.of("message", "Compte utilisateur supprimé avec succès"));

@@ -6,7 +6,6 @@
 
 insert into roles (nom) values
     ('SUPER_ADMIN'),
-    ('ADMIN'),
     ('DIRECTEUR'),
     ('SECRETAIRE'),
     ('COMPTABLE'),

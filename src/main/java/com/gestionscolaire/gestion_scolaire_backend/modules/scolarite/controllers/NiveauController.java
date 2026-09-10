@@ -24,7 +24,7 @@ public class NiveauController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<Niveau> creer(@RequestBody Map<String, @NotBlank String> body) {
         String nom = body.get("nom");
         if (nom == null || nom.isBlank()) {

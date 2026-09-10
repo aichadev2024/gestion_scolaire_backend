@@ -30,7 +30,7 @@ public class EleveController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EleveResponse> inscrire(@Valid @RequestBody EleveInscriptionRequest request) {
         Eleve eleve = Eleve.builder().build();
         Profil profil = dtoMapper.toProfil(request.getProfil());
@@ -68,7 +68,7 @@ public class EleveController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EleveResponse> modifier(@PathVariable Long id, @Valid @RequestBody EleveInscriptionRequest request) {
         Eleve eleveDetails = Eleve.builder().build();
         if (request.getClasseId() != null) {
@@ -83,14 +83,14 @@ public class EleveController {
     }
 
     @PatchMapping("/{id}/archiver")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Map<String, String>> archiver(@PathVariable Long id) {
         eleveService.archiverEleve(id);
         return ResponseEntity.ok(Map.of("message", "Élève archivé"));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
         eleveService.supprimerEleve(id);
         return ResponseEntity.ok(Map.of("message", "Élève supprimé avec succès"));

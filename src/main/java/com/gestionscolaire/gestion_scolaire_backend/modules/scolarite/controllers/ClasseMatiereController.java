@@ -24,7 +24,7 @@ public class ClasseMatiereController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<ClasseMatiere> assigner(@Valid @RequestBody ClasseMatiereRequest request) {
         ClasseMatiere saved = classeMatiereService.assigner(
                 request.getClasseId(),
@@ -36,20 +36,20 @@ public class ClasseMatiereController {
     }
 
     @GetMapping("/classe/{classeId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE', 'DIRECTEUR', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
     public ResponseEntity<List<ClasseMatiere>> listerParClasse(@PathVariable Long classeId) {
         return ResponseEntity.ok(classeMatiereService.listerParClasse(classeId));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE', 'DIRECTEUR', 'ENSEIGNANT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT')")
     public ResponseEntity<ClasseMatiere> trouverParId(@PathVariable Long id) {
         return ResponseEntity.ok(classeMatiereService.trouverParId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignation classe-matière introuvable")));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<ClasseMatiere> modifier(
             @PathVariable Long id,
             @RequestBody Map<String, Object> body
@@ -60,7 +60,7 @@ public class ClasseMatiereController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
         classeMatiereService.supprimer(id);
         return ResponseEntity.ok(Map.of("message", "Assignation supprimée"));

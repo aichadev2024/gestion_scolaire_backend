@@ -28,7 +28,7 @@ public class EnseignantController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EnseignantResponse> creer(@Valid @RequestBody EnseignantRequest request) {
         Enseignant enseignant = Enseignant.builder().biographie(request.getBiographie()).build();
         Profil profil = dtoMapper.toProfil(request.getProfil());
@@ -54,7 +54,7 @@ public class EnseignantController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EnseignantResponse> modifier(@PathVariable Long id, @Valid @RequestBody EnseignantRequest request) {
         Enseignant details = Enseignant.builder().biographie(request.getBiographie()).build();
         Profil profilDetails = dtoMapper.toProfil(request.getProfil());
@@ -63,7 +63,7 @@ public class EnseignantController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<java.util.Map<String, String>> supprimer(@PathVariable Long id) {
         enseignantService.supprimerEnseignant(id);
         return ResponseEntity.ok(java.util.Map.of("message", "Enseignant supprimé avec succès"));

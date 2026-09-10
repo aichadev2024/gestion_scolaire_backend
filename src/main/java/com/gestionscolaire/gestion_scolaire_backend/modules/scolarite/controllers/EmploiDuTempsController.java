@@ -24,7 +24,7 @@ public class EmploiDuTempsController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EmploiDuTemps> creer(@Valid @RequestBody EmploiDuTempsRequest request) {
         com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe classeObj = null;
         if (request.getClasseId() != null) {
@@ -44,19 +44,19 @@ public class EmploiDuTempsController {
     }
 
     @GetMapping("/classe/{classeId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE', 'DIRECTEUR', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
     public ResponseEntity<List<EmploiDuTemps>> listerParClasse(@PathVariable Long classeId) {
         return ResponseEntity.ok(emploiDuTempsService.listerParClasse(classeId));
     }
 
     @GetMapping("/enseignant/{enseignantId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE', 'DIRECTEUR', 'ENSEIGNANT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT')")
     public ResponseEntity<List<EmploiDuTemps>> listerParEnseignant(@PathVariable Long enseignantId) {
         return ResponseEntity.ok(emploiDuTempsService.listerParEnseignant(enseignantId));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EmploiDuTemps> modifier(@PathVariable Long id, @Valid @RequestBody EmploiDuTempsRequest request) {
         com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe classeObj = null;
         if (request.getClasseId() != null) {
@@ -75,7 +75,7 @@ public class EmploiDuTempsController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
         emploiDuTempsService.supprimerCreneau(id);
         return ResponseEntity.ok(Map.of("message", "Créneau supprimé"));

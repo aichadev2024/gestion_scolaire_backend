@@ -13,7 +13,7 @@ import java.util.List;
 public class DataInitializer implements CommandLineRunner {
 
     private static final List<String> ROLES = List.of(
-            "SUPER_ADMIN", "ADMIN", "DIRECTEUR", "SECRETAIRE", "COMPTABLE", "ENSEIGNANT", "ELEVE", "PARENT"
+            "SUPER_ADMIN", "DIRECTEUR", "SECRETAIRE", "COMPTABLE", "ENSEIGNANT", "ELEVE", "PARENT"
     );
 
     private static final List<String> NIVEAUX = List.of(

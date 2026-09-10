@@ -24,7 +24,7 @@ public class NoteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'ENSEIGNANT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
     public ResponseEntity<Note> enregistrer(@Valid @RequestBody NoteRequest request) {
         Note note = Note.builder()
                 .periode(request.getPeriode())
@@ -38,19 +38,19 @@ public class NoteController {
     }
 
     @GetMapping("/eleve/{eleveId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'ENSEIGNANT', 'DIRECTEUR', 'ELEVE', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
     public ResponseEntity<List<Note>> listerParEleve(@PathVariable Long eleveId) {
         return ResponseEntity.ok(noteService.listerNotesEleve(eleveId));
     }
 
     @GetMapping("/classe-matiere/{classeMatiereId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'ENSEIGNANT', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
     public ResponseEntity<List<Note>> listerParClasseMatiere(@PathVariable Long classeMatiereId) {
         return ResponseEntity.ok(noteService.listerNotesParClasseMatiere(classeMatiereId));
     }
 
     @GetMapping("/eleve/{eleveId}/moyenne")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'ENSEIGNANT', 'DIRECTEUR', 'ELEVE', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
     public ResponseEntity<Map<String, Double>> calculerMoyenneGenerale(
             @PathVariable Long eleveId,
             @RequestParam String periode

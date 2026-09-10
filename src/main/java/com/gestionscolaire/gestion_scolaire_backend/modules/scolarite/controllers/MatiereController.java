@@ -24,7 +24,7 @@ public class MatiereController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Matiere> creer(@Valid @RequestBody MatiereRequest request) {
         Matiere matiere = Matiere.builder().nom(request.getNom()).code(request.getCode()).build();
         return ResponseEntity.status(HttpStatus.CREATED).body(matiereService.creerMatiere(matiere));
@@ -44,14 +44,14 @@ public class MatiereController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SECRETAIRE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Matiere> modifier(@PathVariable Long id, @Valid @RequestBody MatiereRequest request) {
         Matiere details = Matiere.builder().nom(request.getNom()).code(request.getCode()).build();
         return ResponseEntity.ok(matiereService.modifierMatiere(id, details));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
         matiereService.supprimerMatiere(id);
         return ResponseEntity.ok(Map.of("message", "Matière supprimée"));

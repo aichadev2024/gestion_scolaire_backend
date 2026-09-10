@@ -29,7 +29,7 @@ public class PresenceController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'ENSEIGNANT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
     public ResponseEntity<Presence> enregistrer(@Valid @RequestBody PresenceRequest request) {
         Presence presence = Presence.builder()
                 .date(request.getDate())
@@ -42,13 +42,13 @@ public class PresenceController {
     }
 
     @GetMapping("/eleve/{eleveId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'ENSEIGNANT', 'DIRECTEUR', 'ELEVE', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
     public ResponseEntity<List<Presence>> listerParEleve(@PathVariable Long eleveId) {
         return ResponseEntity.ok(presenceService.listerPresencesEleve(eleveId));
     }
 
     @GetMapping("/classe-matiere/{classeMatiereId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'ENSEIGNANT', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
     public ResponseEntity<List<Presence>> listerParClasseMatiereEtDate(
             @PathVariable Long classeMatiereId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
@@ -58,7 +58,7 @@ public class PresenceController {
 
     // ── Présences des Enseignants ──
     @PostMapping("/enseignants")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.PresenceEnseignant> enregistrerPresenceEnseignant(
             @Valid @RequestBody com.gestionscolaire.gestion_scolaire_backend.core.dto.PresenceEnseignantRequest request
     ) {
@@ -74,7 +74,7 @@ public class PresenceController {
     }
 
     @GetMapping("/enseignants")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
     public ResponseEntity<List<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.PresenceEnseignant>> listerPresencesEnseignants(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
@@ -82,7 +82,7 @@ public class PresenceController {
     }
 
     @GetMapping("/enseignants/{enseignantId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
     public ResponseEntity<List<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.PresenceEnseignant>> listerPresencesParEnseignant(
             @PathVariable Long enseignantId
     ) {
