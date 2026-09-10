@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface EnseignantRepository extends JpaRepository<Enseignant, Long> {
     Optional<Enseignant> findByMatricule(String matricule);
     List<Enseignant> findByEtablissementId(Long etablissementId);
+    Optional<Enseignant> findByProfilUtilisateurId(Long utilisateurId);
 }
 
 

@@ -11,6 +11,7 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.Uti
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.services.UtilisateurService;
 import com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,21 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository eleveRepository;
+
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository enseignantRepository;
+
+    // @Lazy : EleveService/EnseignantService dépendent de UtilisateurService → on casse le cycle.
+    @Autowired
+    @Lazy
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.EleveService eleveService;
+
+    @Autowired
+    @Lazy
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.EnseignantService enseignantService;
 
     @Override
     public Utilisateur inscrire(Utilisateur utilisateur, Profil profil, String nomRole) {
@@ -204,12 +220,21 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         Utilisateur utilisateur = tenantGuard.requireSameTenant(utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id)));
 
-        // Delete parent entry if role is PARENT
+        // Compte rattaché à une fiche élève / enseignant : supprimer d'abord la
+        // fiche métier ET ses dépendances (notes, bulletins, présences, paiements
+        // pour l'élève ; rattachements de classes pour l'enseignant), sinon les
+        // contraintes de clé étrangère bloquent la suppression du compte.
+        eleveRepository.findByProfilUtilisateurId(id)
+                .ifPresent(e -> eleveService.supprimerEleve(e.getId()));
+        enseignantRepository.findByProfilUtilisateurId(id)
+                .ifPresent(en -> enseignantService.supprimerEnseignant(en.getId()));
+
+        // Fiche parent éventuelle
         try {
             parentRepository.findByProfilUtilisateurId(id).ifPresent(p -> parentRepository.delete(p));
         } catch (Exception ignored) {}
 
-        // Delete profile entry if exists
+        // Profil
         try {
             profilRepository.findByUtilisateurId(id).ifPresent(p -> profilRepository.delete(p));
         } catch (Exception ignored) {}

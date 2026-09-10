@@ -4,6 +4,11 @@ import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotF
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Profil;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseMatiereRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.PresenceEnseignantRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.ClasseMatiere;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.ProfilRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.EnseignantService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +36,15 @@ public class EnseignantServiceImpl implements EnseignantService {
 
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
+    @Autowired
+    private ClasseRepository classeRepository;
+
+    @Autowired
+    private ClasseMatiereRepository classeMatiereRepository;
+
+    @Autowired
+    private PresenceEnseignantRepository presenceEnseignantRepository;
 
     @Override
     public Enseignant creerEnseignant(Enseignant enseignant, Profil profil, String motDePasseInitial) {
@@ -128,6 +142,19 @@ public class EnseignantServiceImpl implements EnseignantService {
     public void supprimerEnseignant(Long id) {
         Enseignant enseignant = tenantGuard.requireSameTenant(enseignantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable ID : " + id)));
+
+        // Détacher l'enseignant partout où il est référencé (colonnes nullables)
+        // puis retirer ses présences, sinon la base rejette la suppression.
+        for (Classe c : classeRepository.findByEnseignantPrincipalId(id)) {
+            c.setEnseignantPrincipal(null);
+            classeRepository.save(c);
+        }
+        for (ClasseMatiere cm : classeMatiereRepository.findByEnseignantId(id)) {
+            cm.setEnseignant(null);
+            classeMatiereRepository.save(cm);
+        }
+        presenceEnseignantRepository.deleteAll(presenceEnseignantRepository.findByEnseignantId(id));
+
         enseignantRepository.delete(enseignant);
     }
 }

@@ -48,6 +48,18 @@ public class EleveServiceImpl implements EleveService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    @Autowired
+    private NoteRepository noteRepository;
+
+    @Autowired
+    private BulletinRepository bulletinRepository;
+
+    @Autowired
+    private PresenceRepository presenceRepository;
+
+    @Autowired
+    private PaiementRepository paiementRepository;
+
     private Parent resoudreParent(Long parentId) {
         if (parentId == null) return null;
 
@@ -282,6 +294,14 @@ public class EleveServiceImpl implements EleveService {
     public void supprimerEleve(Long id) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id)));
+
+        // Suppression des dépendances (aucune contrainte FK n'est ON DELETE CASCADE)
+        // avant la fiche élève, sinon la base rejette la suppression.
+        noteRepository.deleteAll(noteRepository.findByEleveId(id));
+        bulletinRepository.deleteAll(bulletinRepository.findByEleveId(id));
+        presenceRepository.deleteAll(presenceRepository.findByEleveId(id));
+        paiementRepository.deleteAll(paiementRepository.findByEleveId(id));
+
         eleveRepository.delete(eleve);
     }
 }
