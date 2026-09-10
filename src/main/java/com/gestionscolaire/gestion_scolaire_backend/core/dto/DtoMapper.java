@@ -20,6 +20,7 @@ public class DtoMapper {
             return null;
         }
         return ProfilDto.builder()
+                .id(profil.getId())
                 .prenom(profil.getPrenom())
                 .nom(profil.getNom())
                 .telephone(profil.getTelephone())

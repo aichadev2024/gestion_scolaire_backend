@@ -45,6 +45,24 @@ spring:
           starttls:
             enable: true
 
+# Taille max des uploads (photos de profil).
+spring.servlet.multipart:
+  max-file-size: 6MB
+  max-request-size: 8MB
+
+# Stockage d'objets — Cloudflare R2 (S3-compatible).
+# Si storage.r2.enabled=false : l'upload de photos renvoie une erreur claire,
+# les photos base64 déjà en base continuent de s'afficher.
+storage:
+  r2:
+    enabled: ${R2_ENABLED:false}
+    account-id: ${R2_ACCOUNT_ID:}
+    access-key: ${R2_ACCESS_KEY_ID:}
+    secret-key: ${R2_SECRET_ACCESS_KEY:}
+    bucket: ${R2_BUCKET:}
+    # URL publique de lecture du bucket (r2.dev ou domaine perso), sans slash final.
+    public-base-url: ${R2_PUBLIC_BASE_URL:}
+
 # Configuration du port de l'application backend
 server:
   port: ${PORT:8089}

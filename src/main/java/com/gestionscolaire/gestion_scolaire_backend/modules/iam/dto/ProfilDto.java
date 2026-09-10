@@ -12,6 +12,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProfilDto {
+    private Long id;
     private String prenom;
     private String nom;
     private String telephone;
