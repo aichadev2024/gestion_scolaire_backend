@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ParentRepository extends JpaRepository<Parent, Long> {
     java.util.Optional<Parent> findByProfilUtilisateurId(Long utilisateurId);
+    java.util.Optional<Parent> findByProfilTelephoneAndEtablissementId(String telephone, Long etablissementId);
 }
 
 

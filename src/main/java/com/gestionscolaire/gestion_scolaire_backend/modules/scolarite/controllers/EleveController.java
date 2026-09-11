@@ -1,6 +1,7 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.controllers;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.dto.DtoMapper;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveImportRapport;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveInscriptionRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveResponse;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
@@ -9,10 +10,13 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Par
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Profil;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.EleveService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -103,6 +107,25 @@ public class EleveController {
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
         eleveService.supprimerEleve(id);
         return ResponseEntity.ok(Map.of("message", "Élève supprimé avec succès"));
+    }
+
+    /** Import en masse depuis un fichier Excel (.xlsx) — voir /import/modele pour le modèle attendu. */
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<EleveImportRapport> importer(
+            @RequestParam("fichier") MultipartFile fichier,
+            @RequestParam(value = "classeId", required = false) Long classeId) {
+        return ResponseEntity.ok(eleveService.importerDepuisExcel(fichier, classeId));
+    }
+
+    @GetMapping("/import/modele")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<byte[]> modeleImport() {
+        byte[] bytes = eleveService.genererModeleImportExcel();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=modele_import_eleves.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
     }
 }
 

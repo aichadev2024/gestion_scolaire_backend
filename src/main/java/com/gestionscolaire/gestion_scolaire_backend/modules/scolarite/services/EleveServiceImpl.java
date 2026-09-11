@@ -13,10 +13,26 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositori
 import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.repositories.*;
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.repositories.*;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.EleveService;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveImportLigneResultat;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveImportRapport;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -318,6 +334,161 @@ public class EleveServiceImpl implements EleveService {
         paiementRepository.deleteAll(paiementRepository.findByEleveId(id));
 
         eleveRepository.delete(eleve);
+    }
+
+    private static final int COL_PRENOM = 0;
+    private static final int COL_NOM = 1;
+    private static final int COL_GENRE = 2;
+    private static final int COL_DATE_NAISSANCE = 3;
+    private static final int COL_TELEPHONE_ELEVE = 4;
+    private static final int COL_EMAIL_ELEVE = 5;
+    private static final int COL_CLASSE = 6;
+    private static final int COL_TELEPHONE_PARENT = 7;
+
+    @Override
+    public EleveImportRapport importerDepuisExcel(MultipartFile fichier, Long classeIdParDefaut) {
+        Long etablissementId = tenantGuard.requireEtablissementId();
+
+        Classe classeParDefaut = null;
+        if (classeIdParDefaut != null) {
+            classeParDefaut = tenantGuard.requireSameTenant(
+                    classeRepository.findById(classeIdParDefaut)
+                            .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
+        }
+        List<Classe> classesEtablissement = classeRepository.findByEtablissementId(etablissementId);
+
+        List<EleveImportLigneResultat> resultats = new ArrayList<>();
+        int succes = 0;
+
+        try (Workbook workbook = WorkbookFactory.create(fichier.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            DataFormatter formatter = new DataFormatter();
+            int derniereLigne = sheet.getLastRowNum();
+
+            for (int i = 1; i <= derniereLigne; i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                String prenom = valeurCellule(row, COL_PRENOM, formatter);
+                String nom = valeurCellule(row, COL_NOM, formatter);
+                if (prenom.isBlank() && nom.isBlank()) continue; // ligne vide
+
+                int numeroLigne = i + 1;
+                try {
+                    if (prenom.isBlank() || nom.isBlank()) {
+                        throw new BadRequestException("Le prénom et le nom sont obligatoires.");
+                    }
+
+                    String genreRaw = valeurCellule(row, COL_GENRE, formatter);
+                    String genre = "F".equalsIgnoreCase(genreRaw) ? "F" : "M";
+
+                    LocalDate dateNaissance = parserDateCellule(row, COL_DATE_NAISSANCE, formatter);
+                    String telephoneEleve = valeurCellule(row, COL_TELEPHONE_ELEVE, formatter);
+                    String emailEleve = valeurCellule(row, COL_EMAIL_ELEVE, formatter);
+                    String classeNom = valeurCellule(row, COL_CLASSE, formatter);
+                    String telephoneParent = valeurCellule(row, COL_TELEPHONE_PARENT, formatter);
+
+                    Classe classe = classeParDefaut;
+                    if (!classeNom.isBlank()) {
+                        String cible = classeNom.trim();
+                        classe = classesEtablissement.stream()
+                                .filter(c -> c.getNom().equalsIgnoreCase(cible))
+                                .findFirst()
+                                .orElseThrow(() -> new BadRequestException("Classe introuvable : " + classeNom));
+                    }
+
+                    Parent parent = null;
+                    if (!telephoneParent.isBlank()) {
+                        parent = parentRepository.findByProfilTelephoneAndEtablissementId(telephoneParent.trim(), etablissementId)
+                                .orElse(null);
+                    }
+
+                    Profil profil = Profil.builder()
+                            .prenom(prenom.trim())
+                            .nom(nom.trim())
+                            .telephone(telephoneEleve.isBlank() ? null : telephoneEleve.trim())
+                            .email(emailEleve.isBlank() ? null : emailEleve.trim())
+                            .genre(genre)
+                            .dateNaissance(dateNaissance)
+                            .build();
+
+                    Eleve eleve = Eleve.builder().build();
+                    String motDePasse = com.gestionscolaire.gestion_scolaire_backend.core.security.PasswordGenerator.generer();
+
+                    Eleve saved = inscrireEleve(
+                            eleve, profil,
+                            parent != null ? parent.getId() : null,
+                            classe != null ? classe.getId() : null,
+                            motDePasse);
+
+                    succes++;
+                    resultats.add(new EleveImportLigneResultat(
+                            numeroLigne, true, saved.getMatricule(),
+                            prenom.trim() + " " + nom.trim(), saved.getMotDePasseInitial(), null));
+                } catch (Exception rowEx) {
+                    resultats.add(new EleveImportLigneResultat(
+                            numeroLigne, false, null, (prenom + " " + nom).trim(), null, rowEx.getMessage()));
+                }
+            }
+        } catch (IOException e) {
+            throw new BadRequestException("Fichier Excel illisible : " + e.getMessage());
+        }
+
+        return new EleveImportRapport(resultats.size(), succes, resultats.size() - succes, resultats);
+    }
+
+    private String valeurCellule(Row row, int idx, DataFormatter formatter) {
+        Cell cell = row.getCell(idx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) return "";
+        return formatter.formatCellValue(cell).trim();
+    }
+
+    private LocalDate parserDateCellule(Row row, int idx, DataFormatter formatter) {
+        Cell cell = row.getCell(idx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) return null;
+        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+            return cell.getLocalDateTimeCellValue().toLocalDate();
+        }
+        String raw = formatter.formatCellValue(cell).trim();
+        if (raw.isBlank()) return null;
+        for (String pattern : new String[]{"dd/MM/yyyy", "d/M/yyyy", "yyyy-MM-dd"}) {
+            try {
+                return LocalDate.parse(raw, DateTimeFormatter.ofPattern(pattern));
+            } catch (Exception ignored) {
+                // essai du format suivant
+            }
+        }
+        throw new BadRequestException("Date de naissance invalide : " + raw + " (format attendu JJ/MM/AAAA)");
+    }
+
+    @Override
+    public byte[] genererModeleImportExcel() {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Élèves");
+            String[] entetes = {
+                    "Prénom", "Nom", "Genre (M/F)", "Date de naissance (JJ/MM/AAAA)",
+                    "Téléphone élève", "Email élève", "Classe", "Téléphone du parent"
+            };
+            Row header = sheet.createRow(0);
+            for (int i = 0; i < entetes.length; i++) {
+                header.createCell(i).setCellValue(entetes[i]);
+                sheet.setColumnWidth(i, 22 * 256);
+            }
+
+            Row exemple = sheet.createRow(1);
+            String[] valeursExemple = {
+                    "Fatoumata", "Diarra", "F", "12/03/2015",
+                    "", "", "6ème A", "+223 70 00 00 00"
+            };
+            for (int i = 0; i < valeursExemple.length; i++) {
+                exemple.createCell(i).setCellValue(valeursExemple[i]);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lors de la génération du modèle d'import : " + e.getMessage(), e);
+        }
     }
 }
 
