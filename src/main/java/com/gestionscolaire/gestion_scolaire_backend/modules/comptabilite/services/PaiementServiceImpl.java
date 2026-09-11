@@ -1,6 +1,7 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.services;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.RetardPaiementResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.*;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.*;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.*;
@@ -92,6 +93,63 @@ public class PaiementServiceImpl implements PaiementService {
         double totalPaye = paiementsEleve.stream().mapToDouble(Paiement::getMontantPaye).sum();
 
         return totalFrais - totalPaye;
+    }
+
+    @Override
+    public List<RetardPaiementResponse> listerRetardsPaiement() {
+        java.time.LocalDate aujourdHui = java.time.LocalDate.now();
+
+        List<Eleve> eleves = tenantGuard.crossTenant()
+                ? eleveRepository.findAll()
+                : eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+
+        List<RetardPaiementResponse> retards = new java.util.ArrayList<>();
+
+        for (Eleve eleve : eleves) {
+            if (eleve.getClasse() == null || !"ACTIF".equalsIgnoreCase(eleve.getStatut())) {
+                continue;
+            }
+
+            List<FraisScolarite> fraisEchus = fraisScolariteRepository.findByClasseId(eleve.getClasse().getId())
+                    .stream()
+                    .filter(f -> f.getDateEcheance() != null && f.getDateEcheance().isBefore(aujourdHui))
+                    .toList();
+            if (fraisEchus.isEmpty()) continue;
+
+            double montantEchu = fraisEchus.stream().mapToDouble(FraisScolarite::getMontant).sum();
+            double totalPaye = paiementRepository.findByEleveId(eleve.getId()).stream()
+                    .mapToDouble(Paiement::getMontantPaye).sum();
+            double resteDu = montantEchu - totalPaye;
+            if (resteDu <= 0.009) continue; // couvert malgré l'échéance dépassée
+
+            java.time.LocalDate echeanceLaPlusAncienne = fraisEchus.stream()
+                    .map(FraisScolarite::getDateEcheance)
+                    .min(java.time.LocalDate::compareTo)
+                    .orElse(aujourdHui);
+            long joursRetard = java.time.temporal.ChronoUnit.DAYS.between(echeanceLaPlusAncienne, aujourdHui);
+            if (joursRetard < 1) continue; // retard = échéance dépassée d'au moins 1 jour plein
+
+            Parent parent = eleve.getParent();
+            Profil profilParent = parent != null ? parent.getProfil() : null;
+
+            retards.add(RetardPaiementResponse.builder()
+                    .eleveId(eleve.getId())
+                    .eleveNom(eleve.getProfil() != null ? eleve.getProfil().getNom() : null)
+                    .elevePrenom(eleve.getProfil() != null ? eleve.getProfil().getPrenom() : null)
+                    .matricule(eleve.getMatricule())
+                    .classeId(eleve.getClasse().getId())
+                    .classeNom(eleve.getClasse().getNom())
+                    .parentNom(profilParent != null ? profilParent.getNom() : null)
+                    .parentPrenom(profilParent != null ? profilParent.getPrenom() : null)
+                    .parentTelephone(profilParent != null ? profilParent.getTelephone() : null)
+                    .montantDu(resteDu)
+                    .echeanceLaPlusAncienne(echeanceLaPlusAncienne)
+                    .joursRetard(joursRetard)
+                    .build());
+        }
+
+        retards.sort((a, b) -> Long.compare(b.getJoursRetard(), a.getJoursRetard()));
+        return retards;
     }
 }
 

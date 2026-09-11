@@ -1,6 +1,7 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.controllers;
 
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.PaiementRequest;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.RetardPaiementResponse;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.models.Paiement;
 import com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils;
@@ -60,6 +61,13 @@ public class PaiementController {
     public ResponseEntity<Paiement> trouverParRecu(@PathVariable String numeroRecu) {
         return ResponseEntity.ok(paiementService.trouverParNumeroRecu(numeroRecu)
                 .orElseThrow(() -> new ResourceNotFoundException("Paiement introuvable")));
+    }
+
+    /** Parents en retard de paiement (≥ 1 jour après l'échéance), pour le suivi côté direction/comptabilité. */
+    @GetMapping("/retards")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE')")
+    public ResponseEntity<List<RetardPaiementResponse>> listerRetards() {
+        return ResponseEntity.ok(paiementService.listerRetardsPaiement());
     }
 
     @GetMapping("/recu/{numeroRecu}/pdf")
