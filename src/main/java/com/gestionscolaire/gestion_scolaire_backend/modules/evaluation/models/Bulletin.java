@@ -55,6 +55,10 @@ public class Bulletin implements TenantScoped {
     @Builder.Default
     private Boolean estVerrouille = false;
 
+    /** Code opaque imprimé sous forme de QR sur le bulletin, pour vérification publique. */
+    @Column(name = "code_verification", unique = true, length = 16)
+    private String codeVerification;
+
     @CreationTimestamp
     @Column(name = "date_creation", nullable = false, updatable = false)
     private LocalDateTime dateCreation;

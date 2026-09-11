@@ -13,6 +13,7 @@ public interface BulletinRepository extends JpaRepository<Bulletin, Long> {
     List<Bulletin> findByEleveId(Long eleveId);
     List<Bulletin> findByEtablissementId(Long etablissementId);
     List<Bulletin> findByClasseIdAndPeriodeAndAnneeScolaire(Long classeId, String periode, String anneeScolaire);
+    Optional<Bulletin> findByCodeVerification(String codeVerification);
 }
 
 

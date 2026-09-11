@@ -24,6 +24,9 @@ public class BulletinResponse {
     private Double moyenneGenerale;
     private String appreciationGenerale;
     private Boolean estVerrouille;
+    private String codeVerification;
+    /** URL publique complète de vérification (QR) — calculée côté serveur pour éviter toute divergence entre les clients. */
+    private String urlVerification;
     private LocalDateTime dateCreation;
     private LocalDateTime dateModification;
     private List<BulletinLigneResponse> lignes;

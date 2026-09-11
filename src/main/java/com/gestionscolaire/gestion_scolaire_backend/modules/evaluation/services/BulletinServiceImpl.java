@@ -44,6 +44,9 @@ public class BulletinServiceImpl implements BulletinService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Override
     public BulletinResponse genererBulletin(Long eleveId, String periode, String anneeScolaire) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
@@ -65,6 +68,12 @@ public class BulletinServiceImpl implements BulletinService {
 
         if (bulletin.getEstVerrouille()) {
             throw new BadRequestException("Le bulletin est verrouillé, impossible de le regénérer.");
+        }
+
+        // Code de vérification stable : généré une seule fois, conservé aux régénérations.
+        if (bulletin.getCodeVerification() == null) {
+            bulletin.setCodeVerification(
+                    com.gestionscolaire.gestion_scolaire_backend.core.verification.CodeGenerator.court());
         }
 
         Double moyenneGenerale = noteService.calculerMoyenneGeneraleEleve(eleveId, periode);
@@ -137,6 +146,10 @@ public class BulletinServiceImpl implements BulletinService {
                 .moyenneGenerale(bulletin != null ? bulletin.getMoyenneGenerale() : null)
                 .appreciationGenerale(bulletin != null ? bulletin.getAppreciationGenerale() : null)
                 .estVerrouille(bulletin != null ? bulletin.getEstVerrouille() : false)
+                .codeVerification(bulletin != null ? bulletin.getCodeVerification() : null)
+                .urlVerification(bulletin != null && bulletin.getCodeVerification() != null
+                        ? frontendUrl + "/verify/bulletin/" + bulletin.getCodeVerification()
+                        : null)
                 .dateCreation(bulletin != null ? bulletin.getDateCreation() : null)
                 .dateModification(bulletin != null ? bulletin.getDateModification() : null)
                 .lignes(lignes)

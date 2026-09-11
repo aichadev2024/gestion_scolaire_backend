@@ -1,17 +1,20 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
+import com.gestionscolaire.gestion_scolaire_backend.core.verification.QrCodeService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.repositories.EtablissementRepository;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
 import com.lowagie.text.FontFactory;
+import com.lowagie.text.Image;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -22,9 +25,14 @@ import java.time.format.DateTimeFormatter;
 public class RecuEtablissementPdfService {
 
     private final EtablissementRepository etablissementRepository;
+    private final QrCodeService qrCodeService;
 
-    public RecuEtablissementPdfService(EtablissementRepository etablissementRepository) {
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
+    public RecuEtablissementPdfService(EtablissementRepository etablissementRepository, QrCodeService qrCodeService) {
         this.etablissementRepository = etablissementRepository;
+        this.qrCodeService = qrCodeService;
     }
 
     public byte[] genererRecuAbonnementPdf(Long etablissementId) {
@@ -133,6 +141,19 @@ public class RecuEtablissementPdfService {
             document.add(signTable);
 
             document.add(new Paragraph(" "));
+            document.add(new Paragraph(" "));
+
+            // QR de vérification : consultable par quiconque veut confirmer l'authenticité du document.
+            String urlVerification = frontendUrl + "/verify/etablissement/" + etab.getCode();
+            Image qr = Image.getInstance(qrCodeService.genererPng(urlVerification, 240));
+            qr.scaleToFit(80, 80);
+            qr.setAlignment(Element.ALIGN_CENTER);
+            document.add(qr);
+            Font microFont = FontFactory.getFont(FontFactory.HELVETICA, 8, Color.GRAY);
+            Paragraph qrCaption = new Paragraph("Document vérifiable — scannez ce QR ou consultez " + urlVerification, microFont);
+            qrCaption.setAlignment(Element.ALIGN_CENTER);
+            document.add(qrCaption);
+
             document.add(new Paragraph(" "));
             Paragraph footer = new Paragraph("Document officiel généré automatiquement par Netaa École — Valable pour valoir ce que de droit.", normalFont);
             footer.setAlignment(Element.ALIGN_CENTER);
