@@ -1,5 +1,6 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.controllers;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.dto.PresenceJustificationRequest;
 import com.gestionscolaire.gestion_scolaire_backend.core.dto.PresenceRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Presence;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.PresenceService;
@@ -45,6 +46,13 @@ public class PresenceController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
     public ResponseEntity<List<Presence>> listerParEleve(@PathVariable Long eleveId) {
         return ResponseEntity.ok(presenceService.listerPresencesEleve(eleveId));
+    }
+
+    /** Le parent justifie l'absence/le retard de son enfant — déclenche une alerte à la direction. */
+    @PatchMapping("/{id}/justifier")
+    @PreAuthorize("hasRole('PARENT')")
+    public ResponseEntity<Presence> justifier(@PathVariable Long id, @Valid @RequestBody PresenceJustificationRequest request) {
+        return ResponseEntity.ok(presenceService.justifierAbsence(id, request.getNotesJustification()));
     }
 
     @GetMapping("/classe-matiere/{classeMatiereId}")
