@@ -282,6 +282,21 @@ public class EleveServiceImpl implements EleveService {
         return eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
     }
 
+    private static final java.util.Set<String> STATUTS_INSCRIPTION =
+            java.util.Set.of("VALIDEE", "EN_ATTENTE", "ANNULEE");
+
+    @Override
+    public Eleve modifierStatutInscription(Long id, String statutInscription) {
+        if (statutInscription == null || !STATUTS_INSCRIPTION.contains(statutInscription.toUpperCase())) {
+            throw new BadRequestException(
+                    "Statut d'inscription invalide. Valeurs acceptées : VALIDEE, EN_ATTENTE, ANNULEE.");
+        }
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id)));
+        eleve.setStatutInscription(statutInscription.toUpperCase());
+        return eleveRepository.save(eleve);
+    }
+
     @Override
     public void archiverEleve(Long id) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)

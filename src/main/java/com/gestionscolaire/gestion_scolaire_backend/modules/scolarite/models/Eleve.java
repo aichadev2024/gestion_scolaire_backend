@@ -49,6 +49,16 @@ public class Eleve implements TenantScoped {
     @Column(length = 20)
     private String statut = "ACTIF";
 
+    /**
+     * Statut du dossier d'inscription : VALIDEE, EN_ATTENTE ou ANNULEE.
+     * Distinct de {@link #statut} (ACTIF/ARCHIVE, qui gouverne la carte
+     * scolaire et l'accès) — un dossier peut être « en attente » de pièces
+     * ou de paiement sans que le compte ne soit désactivé pour autant.
+     */
+    @Builder.Default
+    @Column(name = "statut_inscription", length = 20)
+    private String statutInscription = "VALIDEE";
+
     /** Non persisté : mot de passe initial généré à l'inscription, renvoyé une seule fois à l'admin. */
     @Transient
     private String motDePasseInitial;

@@ -89,6 +89,15 @@ public class EleveController {
         return ResponseEntity.ok(Map.of("message", "Élève archivé"));
     }
 
+    /** Statut du dossier d'inscription : VALIDEE, EN_ATTENTE ou ANNULEE. */
+    @PatchMapping("/{id}/statut-inscription")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<EleveResponse> modifierStatutInscription(
+            @PathVariable Long id, @RequestBody Map<String, String> body) {
+        Eleve updated = eleveService.modifierStatutInscription(id, body.get("statutInscription"));
+        return ResponseEntity.ok(dtoMapper.toEleveResponse(updated));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {

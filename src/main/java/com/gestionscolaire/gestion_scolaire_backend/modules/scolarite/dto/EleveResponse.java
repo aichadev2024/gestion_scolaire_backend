@@ -14,6 +14,7 @@ public class EleveResponse {
     private Long id;
     private String matricule;
     private String statut;
+    private String statutInscription;
     private Long classeId;
     private String classeNom;
     private Long parentId;

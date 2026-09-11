@@ -86,6 +86,7 @@ public class DtoMapper {
                 .id(eleve.getId())
                 .matricule(eleve.getMatricule())
                 .statut(eleve.getStatut())
+                .statutInscription(eleve.getStatutInscription())
                 .classeId(eleve.getClasse() != null ? eleve.getClasse().getId() : null)
                 .classeNom(eleve.getClasse() != null ? eleve.getClasse().getNom() : null)
                 .parentId(pId)

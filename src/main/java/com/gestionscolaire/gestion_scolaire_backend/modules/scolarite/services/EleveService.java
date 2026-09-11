@@ -15,6 +15,7 @@ public interface EleveService {
     List<Eleve> listerTous();
     void archiverEleve(Long id);
     void supprimerEleve(Long id);
+    Eleve modifierStatutInscription(Long id, String statutInscription);
 }
 
 
