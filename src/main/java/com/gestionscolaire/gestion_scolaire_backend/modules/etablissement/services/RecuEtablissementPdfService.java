@@ -4,6 +4,7 @@ import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotF
 import com.gestionscolaire.gestion_scolaire_backend.core.verification.QrCodeService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.repositories.EtablissementRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -26,13 +27,15 @@ public class RecuEtablissementPdfService {
 
     private final EtablissementRepository etablissementRepository;
     private final QrCodeService qrCodeService;
+    private final TarifPlanService tarifPlanService;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
 
-    public RecuEtablissementPdfService(EtablissementRepository etablissementRepository, QrCodeService qrCodeService) {
+    public RecuEtablissementPdfService(EtablissementRepository etablissementRepository, QrCodeService qrCodeService, TarifPlanService tarifPlanService) {
         this.etablissementRepository = etablissementRepository;
         this.qrCodeService = qrCodeService;
+        this.tarifPlanService = tarifPlanService;
     }
 
     public byte[] genererRecuAbonnementPdf(Long etablissementId) {
@@ -163,8 +166,9 @@ public class RecuEtablissementPdfService {
     }
 
     private String obtenirMontantParPlan(String plan) {
-        if ("PRO".equalsIgnoreCase(plan)) return "75 000 FCFA / mois";
-        return "50 000 FCFA / mois";
+        java.math.BigDecimal prix = tarifPlanService.obtenirPrix(plan != null ? plan : "STARTER");
+        java.text.NumberFormat format = java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE);
+        return format.format(prix) + " FCFA / mois";
     }
 
     private void ajouterLigneHeader(PdfPTable table, String col1, String col2, Font font) {
