@@ -149,10 +149,6 @@ public class RecuEtablissementPdfService {
             qr.scaleToFit(80, 80);
             qr.setAlignment(Element.ALIGN_CENTER);
             document.add(qr);
-            Font microFont = FontFactory.getFont(FontFactory.HELVETICA, 8, Color.GRAY);
-            Paragraph qrCaption = new Paragraph("Document vérifiable — scannez ce QR ou consultez " + urlVerification, microFont);
-            qrCaption.setAlignment(Element.ALIGN_CENTER);
-            document.add(qrCaption);
 
             document.add(new Paragraph(" "));
             Paragraph footer = new Paragraph("Document officiel généré automatiquement par Netaa École — Valable pour valoir ce que de droit.", normalFont);

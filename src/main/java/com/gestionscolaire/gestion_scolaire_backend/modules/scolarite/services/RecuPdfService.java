@@ -90,10 +90,6 @@ public class RecuPdfService {
             qr.setAlignment(Element.ALIGN_CENTER);
             document.add(new Paragraph(" "));
             document.add(qr);
-            Font microFont = FontFactory.getFont(FontFactory.HELVETICA, 8);
-            Paragraph caption = new Paragraph("Document vérifiable — scannez ce QR ou consultez " + urlVerification, microFont);
-            caption.setAlignment(Element.ALIGN_CENTER);
-            document.add(caption);
 
             document.close();
             return outputStream.toByteArray();
