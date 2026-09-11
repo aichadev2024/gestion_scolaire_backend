@@ -37,6 +37,13 @@ public class R2StorageService implements StorageService {
     private static final int TAILLE_MAX_PX = 512;
     private static final long POIDS_MAX_OCTETS = 6L * 1024 * 1024;
 
+    private static final java.util.Map<String, String> EXTENSIONS_DOCUMENT = java.util.Map.of(
+            "application/pdf", "pdf",
+            "image/jpeg", "jpg",
+            "image/jpg", "jpg",
+            "image/png", "png");
+    private static final long POIDS_MAX_DOCUMENT_OCTETS = 6L * 1024 * 1024;
+
     private final R2Properties props;
     private final S3Client s3;
 
@@ -77,6 +84,34 @@ public class R2StorageService implements StorageService {
                         .cacheControl("public, max-age=31536000, immutable")
                         .build(),
                 RequestBody.fromBytes(jpeg));
+
+        return props.getPublicBaseUrl() + "/" + key;
+    }
+
+    @Override
+    public String uploadDocument(byte[] data, String originalContentType, String keyPrefix) {
+        if (data == null || data.length == 0) {
+            throw new BadRequestException("Fichier vide.");
+        }
+        if (data.length > POIDS_MAX_DOCUMENT_OCTETS) {
+            throw new BadRequestException("Document trop lourd (max 6 Mo).");
+        }
+        String ct = originalContentType == null ? "" : originalContentType.toLowerCase();
+        String extension = EXTENSIONS_DOCUMENT.get(ct);
+        if (extension == null) {
+            throw new BadRequestException("Format non supporté. Utilisez un PDF, JPEG ou PNG.");
+        }
+
+        String key = keyPrefix + "/" + UUID.randomUUID() + "." + extension;
+
+        s3.putObject(
+                PutObjectRequest.builder()
+                        .bucket(props.getBucket())
+                        .key(key)
+                        .contentType(ct)
+                        .cacheControl("public, max-age=31536000, immutable")
+                        .build(),
+                RequestBody.fromBytes(data));
 
         return props.getPublicBaseUrl() + "/" + key;
     }

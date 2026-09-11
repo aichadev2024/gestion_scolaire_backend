@@ -13,6 +13,17 @@ public interface StorageService {
      */
     String uploadImage(byte[] data, String originalContentType, String keyPrefix);
 
+    /**
+     * Envoie un document tel quel dans le bucket (PDF ou image — pas de
+     * redimensionnement, contrairement à {@link #uploadImage}).
+     *
+     * @param data           octets bruts du fichier reçu
+     * @param originalContentType type MIME déclaré (application/pdf, image/jpeg, image/png…)
+     * @param keyPrefix      préfixe de clé, ex. {@code "documents/42"}
+     * @return URL publique du document
+     */
+    String uploadDocument(byte[] data, String originalContentType, String keyPrefix);
+
     /** Supprime l'objet si l'URL pointe vers notre bucket (sans effet sinon). */
     void deleteByUrl(String url);
 
