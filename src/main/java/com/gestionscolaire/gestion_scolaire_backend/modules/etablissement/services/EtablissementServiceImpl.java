@@ -145,6 +145,37 @@ public class EtablissementServiceImpl implements EtablissementService {
         return mapToResponse(updated);
     }
 
+    @Override
+    @Transactional
+    public EtablissementResponse renouvelerAbonnement(Long id, String planTarifaire, int dureeMois) {
+        if (dureeMois < 1) {
+            throw new BadRequestException("La durée du renouvellement doit être d'au moins 1 mois.");
+        }
+        Etablissement etablissement = etablissementRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Établissement introuvable avec l'id : " + id));
+
+        LocalDateTime maintenant = LocalDateTime.now();
+        LocalDateTime baseDepart = (etablissement.getDateExpirationAbonnement() != null
+                && etablissement.getDateExpirationAbonnement().isAfter(maintenant))
+                ? etablissement.getDateExpirationAbonnement()
+                : maintenant;
+
+        etablissement.setDateExpirationAbonnement(baseDepart.plusMonths(dureeMois));
+        if (planTarifaire != null && !planTarifaire.isBlank()) {
+            etablissement.setPlanTarifaire(planTarifaire.trim().toUpperCase());
+        }
+        // Le renouvellement vaut réactivation : une suspension pour abonnement
+        // expiré n'a plus lieu d'être une fois le paiement enregistré. Une
+        // suspension pour un autre motif (abus, litige…) devra être relevée
+        // explicitement par le Super-Admin — on ne clôture jamais ici.
+        if (etablissement.getStatut() == StatutEtablissement.SUSPENDU) {
+            etablissement.setStatut(StatutEtablissement.ACTIF);
+        }
+
+        Etablissement updated = etablissementRepository.save(etablissement);
+        return mapToResponse(updated);
+    }
+
     private EtablissementResponse mapToResponse(Etablissement etablissement) {
         String adminUsername = null;
         String adminNomComplet = null;

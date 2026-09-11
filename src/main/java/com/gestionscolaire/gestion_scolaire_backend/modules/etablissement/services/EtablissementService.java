@@ -11,6 +11,14 @@ public interface EtablissementService {
     List<EtablissementResponse> listerTous();
     EtablissementResponse obtenirParId(Long id);
     EtablissementResponse modifierStatut(Long id, StatutEtablissement statut);
+
+    /**
+     * Renouvelle l'abonnement : la durée payée s'ajoute à la date d'expiration
+     * actuelle si elle n'est pas encore dépassée (pas de temps perdu en
+     * renouvelant en avance), sinon repart d'aujourd'hui. Réactive
+     * automatiquement l'établissement s'il était suspendu pour expiration.
+     */
+    EtablissementResponse renouvelerAbonnement(Long id, String planTarifaire, int dureeMois);
 }
 
 

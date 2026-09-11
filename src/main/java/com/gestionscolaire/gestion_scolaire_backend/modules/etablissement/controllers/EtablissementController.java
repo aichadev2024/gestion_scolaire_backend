@@ -2,6 +2,7 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.contr
 
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.CreateEtablissementWithAdminRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.EtablissementResponse;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.RenouvellementRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.StatutEtablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.EtablissementService;
 import jakarta.validation.Valid;
@@ -61,6 +62,16 @@ public class EtablissementController {
         String statutStr = body.get("statut");
         StatutEtablissement statut = StatutEtablissement.valueOf(statutStr);
         return ResponseEntity.ok(etablissementService.modifierStatut(id, statut));
+    }
+
+    /** Renouvellement d'abonnement (plan + durée payée) — prolonge l'expiration et réactive si suspendu. */
+    @PatchMapping("/{id}/renouveler")
+    public ResponseEntity<EtablissementResponse> renouveler(
+            @PathVariable Long id,
+            @Valid @RequestBody RenouvellementRequest request
+    ) {
+        return ResponseEntity.ok(etablissementService.renouvelerAbonnement(
+                id, request.getPlanTarifaire(), request.getDureeMois()));
     }
 }
 
