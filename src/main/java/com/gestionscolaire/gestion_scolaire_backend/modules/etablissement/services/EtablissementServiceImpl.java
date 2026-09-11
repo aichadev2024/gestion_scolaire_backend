@@ -3,6 +3,7 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.servi
 import com.gestionscolaire.gestion_scolaire_backend.core.dto.DtoMapper;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.CreateEtablissementWithAdminRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.EtablissementResponse;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.ModifierEtablissementRequest;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
@@ -141,6 +142,19 @@ public class EtablissementServiceImpl implements EtablissementService {
         Etablissement etablissement = etablissementRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Établissement introuvable avec l'id : " + id));
         etablissement.setStatut(statut);
+        Etablissement updated = etablissementRepository.save(etablissement);
+        return mapToResponse(updated);
+    }
+
+    @Override
+    @Transactional
+    public EtablissementResponse modifierInfos(Long id, ModifierEtablissementRequest request) {
+        Etablissement etablissement = etablissementRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Établissement introuvable avec l'id : " + id));
+        etablissement.setNom(request.getNom());
+        etablissement.setEmailContact(request.getEmailContact());
+        etablissement.setTelephone(request.getTelephone());
+        etablissement.setAdresse(request.getAdresse());
         Etablissement updated = etablissementRepository.save(etablissement);
         return mapToResponse(updated);
     }

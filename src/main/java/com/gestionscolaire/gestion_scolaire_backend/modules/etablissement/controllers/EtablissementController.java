@@ -2,6 +2,7 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.contr
 
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.CreateEtablissementWithAdminRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.EtablissementResponse;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.ModifierEtablissementRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.RenouvellementRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.StatutEtablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.EtablissementService;
@@ -52,6 +53,15 @@ public class EtablissementController {
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=Recu_Abonnement_Etablissement_" + id + ".pdf")
                 .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
+    }
+
+    /** Coordonnées (nom, contact, adresse) — le plan et l'expiration passent par /renouveler, le statut par /statut. */
+    @PutMapping("/{id}")
+    public ResponseEntity<EtablissementResponse> modifierInfos(
+            @PathVariable Long id,
+            @Valid @RequestBody ModifierEtablissementRequest request
+    ) {
+        return ResponseEntity.ok(etablissementService.modifierInfos(id, request));
     }
 
     @PatchMapping("/{id}/statut")
