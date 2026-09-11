@@ -4,6 +4,8 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niv
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Role;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.NiveauRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.RoleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +13,8 @@ import java.util.List;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private static final List<String> ROLES = List.of(
             "SUPER_ADMIN", "DIRECTEUR", "SECRETAIRE", "COMPTABLE", "ENSEIGNANT", "ELEVE", "PARENT"
@@ -84,9 +88,9 @@ public class DataInitializer implements CommandLineRunner {
                 com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur savedUser = utilisateurRepository.save(user);
                 profil.setUtilisateur(savedUser);
                 profilRepository.save(profil);
-                System.out.println("[Auto-repair] Compte enseignant recréé pour le profil " + profil.getId()
-                        + " — identifiant: " + username + " — mot de passe provisoire: " + motDePasseProvisoire
-                        + " (à communiquer et à changer à la première connexion).");
+                log.info("[Auto-repair] Compte enseignant recréé pour le profil {} — identifiant: {} — "
+                                + "mot de passe provisoire: {} (à communiquer et à changer à la première connexion).",
+                        profil.getId(), username, motDePasseProvisoire);
             }
         } catch (Exception e) {
             System.err.println("Notice: Auto-repair profiles check: " + e.getMessage());
