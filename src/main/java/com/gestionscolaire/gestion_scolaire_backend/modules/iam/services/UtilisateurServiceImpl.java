@@ -241,6 +241,36 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
         utilisateurRepository.delete(utilisateur);
     }
+
+    @Override
+    public Utilisateur nommerDirecteur(Long id) {
+        Utilisateur nouveauDirecteur = tenantGuard.requireSameTenant(utilisateurRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id)));
+
+        if (nouveauDirecteur.getEtablissement() == null) {
+            throw new BadRequestException("Cet utilisateur n'est rattaché à aucun établissement.");
+        }
+        if (nouveauDirecteur.getRole() != null && "DIRECTEUR".equalsIgnoreCase(nouveauDirecteur.getRole().getNom())) {
+            throw new BadRequestException("Cet utilisateur est déjà directeur.");
+        }
+
+        Role roleDirecteur = roleRepository.findByNom("DIRECTEUR")
+                .orElseThrow(() -> new ResourceNotFoundException("Rôle introuvable : DIRECTEUR"));
+        Role roleSecretaire = roleRepository.findByNom("SECRETAIRE")
+                .orElseThrow(() -> new ResourceNotFoundException("Rôle introuvable : SECRETAIRE"));
+
+        // Un établissement n'a qu'un directeur actif à la fois : l'ancien titulaire
+        // redevient Secrétaire plutôt que d'être désactivé — il garde son accès.
+        utilisateurRepository.findByEtablissementId(nouveauDirecteur.getEtablissement().getId()).stream()
+                .filter(u -> u.getRole() != null && "DIRECTEUR".equalsIgnoreCase(u.getRole().getNom()))
+                .forEach(u -> {
+                    u.setRole(roleSecretaire);
+                    utilisateurRepository.save(u);
+                });
+
+        nouveauDirecteur.setRole(roleDirecteur);
+        return utilisateurRepository.save(nouveauDirecteur);
+    }
 }
 
 

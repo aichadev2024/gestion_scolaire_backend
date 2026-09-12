@@ -85,6 +85,15 @@ public class UtilisateurController {
         utilisateurService.supprimerUtilisateur(id);
         return ResponseEntity.ok(Map.of("message", "Compte utilisateur supprimé avec succès"));
     }
+
+    /** Change le directeur de l'établissement : cet utilisateur devient DIRECTEUR, l'ancien redevient Secrétaire. */
+    @PatchMapping("/{id}/nommer-directeur")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
+    public ResponseEntity<UtilisateurResponse> nommerDirecteur(@PathVariable Long id) {
+        Utilisateur updated = utilisateurService.nommerDirecteur(id);
+        Profil updatedProfil = profilRepository.findByUtilisateurId(updated.getId()).orElse(null);
+        return ResponseEntity.ok(dtoMapper.toUtilisateurResponse(updated, updatedProfil));
+    }
 }
 
 

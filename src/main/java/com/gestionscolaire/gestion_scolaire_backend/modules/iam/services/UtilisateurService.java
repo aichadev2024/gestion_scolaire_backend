@@ -14,6 +14,8 @@ public interface UtilisateurService {
     void modifierStatut(Long id, boolean estActif);
     Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole);
     void supprimerUtilisateur(Long id);
+    /** Nomme cet utilisateur DIRECTEUR de son établissement ; l'ancien (ou les anciens) titulaire(s) redevien(nen)t Secrétaire. */
+    Utilisateur nommerDirecteur(Long id);
 }
 
 
