@@ -490,6 +490,46 @@ public class EleveServiceImpl implements EleveService {
             throw new RuntimeException("Erreur lors de la génération du modèle d'import : " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionRapport promouvoir(
+            Long classeDestinationId, List<Long> eleveIds) {
+        Classe destination = tenantGuard.requireSameTenant(classeRepository.findById(classeDestinationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Classe de destination introuvable")));
+
+        long effectifActuel = eleveRepository.findByClasseId(classeDestinationId).size();
+        int capacite = destination.getCapaciteMax();
+
+        List<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionLigneResultat> resultats = new ArrayList<>();
+        int succes = 0;
+        for (Long eleveId : eleveIds) {
+            String nomComplet = null;
+            try {
+                Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + eleveId)));
+                nomComplet = eleve.getProfil() != null
+                        ? (eleve.getProfil().getPrenom() + " " + eleve.getProfil().getNom()).trim()
+                        : null;
+
+                if (effectifActuel >= capacite) {
+                    throw new BadRequestException("Capacité de la classe de destination atteinte (" + capacite + ")");
+                }
+
+                eleve.setClasse(destination);
+                eleveRepository.save(eleve);
+                effectifActuel++;
+                succes++;
+                resultats.add(new com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionLigneResultat(
+                        eleveId, true, nomComplet, null));
+            } catch (Exception e) {
+                resultats.add(new com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionLigneResultat(
+                        eleveId, false, nomComplet, e.getMessage()));
+            }
+        }
+
+        return new com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionRapport(
+                eleveIds.size(), succes, eleveIds.size() - succes, resultats);
+    }
 }
 
 

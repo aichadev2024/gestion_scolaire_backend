@@ -4,6 +4,8 @@ import com.gestionscolaire.gestion_scolaire_backend.core.dto.DtoMapper;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveImportRapport;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveInscriptionRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveResponse;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionRapport;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionRequest;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Parent;
@@ -126,6 +128,13 @@ public class EleveController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=modele_import_eleves.xlsx")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(bytes);
+    }
+
+    /** Passage en masse des élèves sélectionnés vers une autre classe (ex. classe supérieure). */
+    @PostMapping("/promotion")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<PromotionRapport> promouvoir(@Valid @RequestBody PromotionRequest request) {
+        return ResponseEntity.ok(eleveService.promouvoir(request.getClasseDestinationId(), request.getEleveIds()));
     }
 }
 

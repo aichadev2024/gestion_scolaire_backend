@@ -3,6 +3,7 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Profil;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveImportRapport;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionRapport;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,8 @@ public interface EleveService {
     Eleve modifierStatutInscription(Long id, String statutInscription);
     EleveImportRapport importerDepuisExcel(MultipartFile fichier, Long classeIdParDefaut);
     byte[] genererModeleImportExcel();
+    /** Fait passer les élèves sélectionnés dans une autre classe (ex. passage en classe supérieure). */
+    PromotionRapport promouvoir(Long classeDestinationId, List<Long> eleveIds);
 }
 
 
