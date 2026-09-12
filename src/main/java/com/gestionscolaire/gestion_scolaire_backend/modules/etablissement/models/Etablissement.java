@@ -42,6 +42,10 @@ public class Etablissement {
     @Builder.Default
     private String devise = "FCFA";
 
+    /** Devise au sens « slogan » de l'école, ex. « Travail - Rigueur - Réussite ». */
+    @Column(length = 255)
+    private String slogan;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

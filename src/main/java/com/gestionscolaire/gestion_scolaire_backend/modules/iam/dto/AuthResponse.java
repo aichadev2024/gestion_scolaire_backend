@@ -22,6 +22,7 @@ public class AuthResponse {
     private String etablissementNom;
     private String etablissementLogoUrl;
     private String etablissementDevise;
+    private String etablissementSlogan;
     private String etablissementPlanTarifaire;
     private Integer etablissementMaxEnseignants;
     private Long eleveId;

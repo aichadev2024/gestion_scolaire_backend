@@ -158,6 +158,9 @@ public class EtablissementServiceImpl implements EtablissementService {
         if (request.getDevise() != null && !request.getDevise().isBlank()) {
             etablissement.setDevise(request.getDevise().trim());
         }
+        if (request.getSlogan() != null) {
+            etablissement.setSlogan(request.getSlogan().isBlank() ? null : request.getSlogan().trim());
+        }
         Etablissement updated = etablissementRepository.save(etablissement);
         return mapToResponse(updated);
     }
@@ -223,6 +226,7 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .adresse(etablissement.getAdresse())
                 .logoUrl(etablissement.getLogoUrl())
                 .devise(etablissement.getDevise())
+                .slogan(etablissement.getSlogan())
                 .statut(etablissement.getStatut())
                 .planTarifaire(etablissement.getPlanTarifaire())
                 .dateExpirationAbonnement(etablissement.getDateExpirationAbonnement())

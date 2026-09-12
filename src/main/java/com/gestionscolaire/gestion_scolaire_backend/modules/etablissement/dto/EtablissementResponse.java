@@ -17,6 +17,7 @@ public class EtablissementResponse {
     private String adresse;
     private String logoUrl;
     private String devise;
+    private String slogan;
     private StatutEtablissement statut;
     private String planTarifaire;
     private LocalDateTime dateExpirationAbonnement;

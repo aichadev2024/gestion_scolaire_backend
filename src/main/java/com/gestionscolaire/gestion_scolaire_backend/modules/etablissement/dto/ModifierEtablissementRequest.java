@@ -14,4 +14,6 @@ public class ModifierEtablissementRequest {
     private String telephone;
     private String adresse;
     private String devise;
+    /** Slogan de l'école, ex. « Travail - Rigueur - Réussite ». */
+    private String slogan;
 }
