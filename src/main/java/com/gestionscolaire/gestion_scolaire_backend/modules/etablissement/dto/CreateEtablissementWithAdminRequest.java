@@ -22,6 +22,8 @@ public class CreateEtablissementWithAdminRequest {
     private String adresse;
     private String planTarifaire;
     private LocalDateTime dateExpirationAbonnement;
+    /** ECOLE (défaut) ou CRECHE. */
+    private String typeEtablissement;
 
     // ── Premier administrateur de l'école ─────────────────────────
     @NotBlank(message = "Le nom d'utilisateur de l'administrateur est obligatoire")

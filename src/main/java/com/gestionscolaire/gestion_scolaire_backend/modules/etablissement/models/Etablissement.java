@@ -51,6 +51,12 @@ public class Etablissement {
     @Builder.Default
     private StatutEtablissement statut = StatutEtablissement.ACTIF;
 
+    /** École (par défaut) ou Crèche — fixé à la création, oriente le vocabulaire côté web (Monitrices, Groupes…). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_etablissement", nullable = false, length = 20)
+    @Builder.Default
+    private TypeEtablissement typeEtablissement = TypeEtablissement.ECOLE;
+
     @Column(name = "plan_tarifaire", length = 50)
     @Builder.Default
     private String planTarifaire = "STANDARD";

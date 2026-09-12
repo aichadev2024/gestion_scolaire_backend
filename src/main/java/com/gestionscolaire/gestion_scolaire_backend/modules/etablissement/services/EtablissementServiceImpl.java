@@ -82,6 +82,17 @@ public class EtablissementServiceImpl implements EtablissementService {
                 ? request.getDateExpirationAbonnement() 
                 : java.time.LocalDateTime.now().plusMonths(1);
 
+        com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.TypeEtablissement typeFinal =
+                com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.TypeEtablissement.ECOLE;
+        if (request.getTypeEtablissement() != null && !request.getTypeEtablissement().isBlank()) {
+            try {
+                typeFinal = com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.TypeEtablissement
+                        .valueOf(request.getTypeEtablissement().trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Type d'établissement invalide : " + request.getTypeEtablissement());
+            }
+        }
+
         Etablissement etablissement = Etablissement.builder()
                 .nom(request.getNomEtablissement())
                 .code(codeFinal)
@@ -91,6 +102,7 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .planTarifaire(request.getPlanTarifaire() != null ? request.getPlanTarifaire() : "STANDARD")
                 .dateExpirationAbonnement(expiryDate)
                 .statut(StatutEtablissement.ACTIF)
+                .typeEtablissement(typeFinal)
                 .build();
 
         Etablissement savedEtablissement = etablissementRepository.save(etablissement);
@@ -227,6 +239,7 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .logoUrl(etablissement.getLogoUrl())
                 .devise(etablissement.getDevise())
                 .slogan(etablissement.getSlogan())
+                .typeEtablissement(etablissement.getTypeEtablissement())
                 .statut(etablissement.getStatut())
                 .planTarifaire(etablissement.getPlanTarifaire())
                 .dateExpirationAbonnement(etablissement.getDateExpirationAbonnement())
