@@ -4,6 +4,8 @@ import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotF
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.TarifPlanResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.TarifPlan;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.repositories.TarifPlanRepository;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,24 @@ public class TarifPlanServiceImpl implements TarifPlanService {
 
     public TarifPlanServiceImpl(TarifPlanRepository tarifPlanRepository) {
         this.tarifPlanRepository = tarifPlanRepository;
+    }
+
+    /**
+     * Filet de sécurité au démarrage : si STARTER/PRO manquent (ex. base vidée
+     * manuellement pour des tests, sans reset de l'historique Flyway — la
+     * migration d'origine ne se rejoue jamais), on les recrée avec des valeurs
+     * par défaut sans jamais écraser un plan déjà présent.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void assurerPlansParDefaut() {
+        if (tarifPlanRepository.findByCodeIgnoreCase("STARTER").isEmpty()) {
+            tarifPlanRepository.save(TarifPlan.builder()
+                    .code("STARTER").prixMensuel(new BigDecimal("50000")).maxEnseignants(12).build());
+        }
+        if (tarifPlanRepository.findByCodeIgnoreCase("PRO").isEmpty()) {
+            tarifPlanRepository.save(TarifPlan.builder()
+                    .code("PRO").prixMensuel(new BigDecimal("75000")).maxEnseignants(null).build());
+        }
     }
 
     @Override
