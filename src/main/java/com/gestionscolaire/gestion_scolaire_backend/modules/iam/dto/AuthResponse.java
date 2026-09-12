@@ -22,6 +22,8 @@ public class AuthResponse {
     private String etablissementNom;
     private String etablissementLogoUrl;
     private String etablissementDevise;
+    private String etablissementPlanTarifaire;
+    private Integer etablissementMaxEnseignants;
     private Long eleveId;
     private String classeNom;
     private Boolean requiresOtp;

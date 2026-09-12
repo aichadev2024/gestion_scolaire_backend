@@ -1,6 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Profil;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository;
@@ -46,8 +48,31 @@ public class EnseignantServiceImpl implements EnseignantService {
     @Autowired
     private PresenceEnseignantRepository presenceEnseignantRepository;
 
+    @Autowired
+    private TarifPlanService tarifPlanService;
+
     @Override
     public Enseignant creerEnseignant(Enseignant enseignant, Profil profil, String motDePasseInitial) {
+        // Récupérer l'établissement de l'utilisateur connecté (Admin)
+        com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etablissement = null;
+        try {
+            etablissement = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur().getEtablissement();
+        } catch (Exception ignored) {}
+
+        // Restriction du plan tarifaire (ex. Starter limité à N enseignants) — Pro/plans sans
+        // limite renvoient null. Vérifié avant toute écriture pour ne rien créer à moitié.
+        if (etablissement != null) {
+            Integer limite = tarifPlanService.obtenirLimiteEnseignants(etablissement.getPlanTarifaire());
+            if (limite != null) {
+                long actuel = enseignantRepository.findByEtablissementId(etablissement.getId()).size();
+                if (actuel >= limite) {
+                    throw new BadRequestException(
+                            "Le plan " + etablissement.getPlanTarifaire() + " est limité à " + limite
+                                    + " compte(s) enseignant(s). Passez au plan Pro pour en ajouter davantage.");
+                }
+            }
+        }
+
         // 1. Génération automatique du matricule unique pour l'enseignant
         String seq = String.format("%04d", enseignantRepository.count() + 1);
         String matricule = "T-GEN-" + seq;
@@ -63,15 +88,9 @@ public class EnseignantServiceImpl implements EnseignantService {
             username = baseUsername + counter++;
         }
 
-        String email = (profil.getEmail() != null && !profil.getEmail().isBlank()) 
-                ? profil.getEmail().trim() 
+        String email = (profil.getEmail() != null && !profil.getEmail().isBlank())
+                ? profil.getEmail().trim()
                 : null;
-
-        // Récupérer l'établissement de l'utilisateur connecté (Admin)
-        com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etablissement = null;
-        try {
-            etablissement = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur().getEtablissement();
-        } catch (Exception ignored) {}
 
         // 3. Création automatique du compte Utilisateur avec rôle ENSEIGNANT
         com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur user = com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur.builder()

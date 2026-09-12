@@ -24,6 +24,10 @@ public class TarifPlan {
     @Column(name = "prix_mensuel", nullable = false, precision = 12, scale = 2)
     private BigDecimal prixMensuel;
 
+    /** Nombre max de comptes enseignants pour ce plan — null = illimité. */
+    @Column(name = "max_enseignants")
+    private Integer maxEnseignants;
+
     @UpdateTimestamp
     @Column(name = "date_modification", nullable = false)
     private LocalDateTime dateModification;

@@ -11,4 +11,8 @@ public class ModifierTarifRequest {
     @NotNull(message = "Le prix mensuel est obligatoire")
     @Positive(message = "Le prix mensuel doit être supérieur à zéro")
     private BigDecimal prixMensuel;
+
+    /** Nombre max de comptes enseignants — laisser vide/null pour illimité. */
+    @Positive(message = "La limite d'enseignants doit être supérieure à zéro")
+    private Integer maxEnseignants;
 }

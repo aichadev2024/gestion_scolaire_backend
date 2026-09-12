@@ -12,4 +12,6 @@ import java.math.BigDecimal;
 public class TarifPlanResponse {
     private String code;
     private BigDecimal prixMensuel;
+    /** Nombre max de comptes enseignants pour ce plan — null = illimité. */
+    private Integer maxEnseignants;
 }

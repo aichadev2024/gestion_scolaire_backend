@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface TarifPlanService {
     List<TarifPlanResponse> listerTous();
-    TarifPlanResponse modifierPrix(String code, BigDecimal nouveauPrix);
+    TarifPlanResponse modifierPlan(String code, BigDecimal prixMensuel, Integer maxEnseignants);
     BigDecimal obtenirPrix(String code);
+    /** Limite de comptes enseignants pour ce plan — null = illimité (ou plan introuvable). */
+    Integer obtenirLimiteEnseignants(String code);
 }

@@ -22,18 +22,18 @@ public class TarifPlanServiceImpl implements TarifPlanService {
     @Override
     public List<TarifPlanResponse> listerTous() {
         return tarifPlanRepository.findAll().stream()
-                .map(t -> TarifPlanResponse.builder().code(t.getCode()).prixMensuel(t.getPrixMensuel()).build())
+                .map(this::toResponse)
                 .toList();
     }
 
     @Override
     @Transactional
-    public TarifPlanResponse modifierPrix(String code, BigDecimal nouveauPrix) {
+    public TarifPlanResponse modifierPlan(String code, BigDecimal prixMensuel, Integer maxEnseignants) {
         TarifPlan tarif = tarifPlanRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Plan tarifaire introuvable : " + code));
-        tarif.setPrixMensuel(nouveauPrix);
-        TarifPlan updated = tarifPlanRepository.save(tarif);
-        return TarifPlanResponse.builder().code(updated.getCode()).prixMensuel(updated.getPrixMensuel()).build();
+        tarif.setPrixMensuel(prixMensuel);
+        tarif.setMaxEnseignants(maxEnseignants);
+        return toResponse(tarifPlanRepository.save(tarif));
     }
 
     @Override
@@ -41,5 +41,20 @@ public class TarifPlanServiceImpl implements TarifPlanService {
         return tarifPlanRepository.findByCodeIgnoreCase(code)
                 .map(TarifPlan::getPrixMensuel)
                 .orElse(BigDecimal.ZERO);
+    }
+
+    @Override
+    public Integer obtenirLimiteEnseignants(String code) {
+        return tarifPlanRepository.findByCodeIgnoreCase(code)
+                .map(TarifPlan::getMaxEnseignants)
+                .orElse(null);
+    }
+
+    private TarifPlanResponse toResponse(TarifPlan t) {
+        return TarifPlanResponse.builder()
+                .code(t.getCode())
+                .prixMensuel(t.getPrixMensuel())
+                .maxEnseignants(t.getMaxEnseignants())
+                .build();
     }
 }

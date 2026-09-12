@@ -41,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
     private final ProfilRepository profilRepository;
     private final EmailService emailService;
     private final EleveRepository eleveRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
@@ -48,7 +49,8 @@ public class AuthServiceImpl implements AuthService {
             UtilisateurRepository utilisateurRepository,
             ProfilRepository profilRepository,
             EmailService emailService,
-            EleveRepository eleveRepository
+            EleveRepository eleveRepository,
+            com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -56,6 +58,12 @@ public class AuthServiceImpl implements AuthService {
         this.profilRepository = profilRepository;
         this.emailService = emailService;
         this.eleveRepository = eleveRepository;
+        this.tarifPlanService = tarifPlanService;
+    }
+
+    private Integer limiteEnseignantsPour(Utilisateur utilisateur) {
+        if (utilisateur.getEtablissement() == null) return null;
+        return tarifPlanService.obtenirLimiteEnseignants(utilisateur.getEtablissement().getPlanTarifaire());
     }
 
     @Override
@@ -149,6 +157,8 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementNom(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getNom() : "Établissement Scolaire")
                 .etablissementLogoUrl(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getLogoUrl() : null)
                 .etablissementDevise(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getDevise() : "FCFA")
+                .etablissementPlanTarifaire(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getPlanTarifaire() : null)
+                .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)
                 .classeNom(classeNom)
                 .build();
@@ -230,6 +240,8 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementNom(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getNom() : "Établissement Scolaire")
                 .etablissementLogoUrl(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getLogoUrl() : null)
                 .etablissementDevise(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getDevise() : "FCFA")
+                .etablissementPlanTarifaire(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getPlanTarifaire() : null)
+                .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)
                 .classeNom(classeNom)
                 .message("Première connexion validée avec succès !")
