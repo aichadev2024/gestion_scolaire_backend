@@ -43,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     private final EleveRepository eleveRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService;
     private final com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository enseignantRepository;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
@@ -52,7 +53,8 @@ public class AuthServiceImpl implements AuthService {
             EmailService emailService,
             EleveRepository eleveRepository,
             com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService,
-            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository,
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository enseignantRepository
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -62,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
         this.eleveRepository = eleveRepository;
         this.tarifPlanService = tarifPlanService;
         this.classeRepository = classeRepository;
+        this.enseignantRepository = enseignantRepository;
     }
 
     private Integer limiteEnseignantsPour(Utilisateur utilisateur) {
@@ -77,6 +80,23 @@ public class AuthServiceImpl implements AuthService {
     private boolean aClassesCrechePour(Utilisateur utilisateur) {
         if (utilisateur.getEtablissement() == null) return false;
         return classeRepository.existsByEtablissementIdAndNiveauNomIgnoreCase(utilisateur.getEtablissement().getId(), "Crèche");
+    }
+
+    /** Vrai seulement si l'établissement n'a AUCUNE classe en dehors du niveau Crèche — sert au libellé
+     * générique du menu, jamais à décider qui est réellement monitrice (voir {@link #estMonitricePour}). */
+    private boolean etablissementUniquementCrechePour(Utilisateur utilisateur) {
+        if (utilisateur.getEtablissement() == null) return false;
+        Long etabId = utilisateur.getEtablissement().getId();
+        return aClassesCrechePour(utilisateur) && !classeRepository.existsByEtablissementIdAndNiveauNomNotIgnoreCase(etabId, "Crèche");
+    }
+
+    /** Vrai si CET utilisateur enseigne réellement en crèche (prof principal d'une classe Crèche) —
+     * dans une école mixte, seuls certains membres du personnel sont des monitrices, pas tous. */
+    private boolean estMonitricePour(Utilisateur utilisateur) {
+        if (utilisateur.getRole() == null || !"ENSEIGNANT".equalsIgnoreCase(utilisateur.getRole().getNom())) return false;
+        return enseignantRepository.findByProfilUtilisateurId(utilisateur.getId())
+                .map(ens -> classeRepository.existsByEnseignantPrincipalIdAndNiveauNomIgnoreCase(ens.getId(), "Crèche"))
+                .orElse(false);
     }
 
     @Override
@@ -173,6 +193,8 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementSlogan(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getSlogan() : null)
                 .etablissementType(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getTypeEtablissement().name() : null)
                 .aClassesCreche(aClassesCrechePour(utilisateur))
+                .etablissementUniquementCreche(etablissementUniquementCrechePour(utilisateur))
+                .estMonitrice(estMonitricePour(utilisateur))
                 .etablissementPlanTarifaire(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getPlanTarifaire() : null)
                 .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)
@@ -259,6 +281,8 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementSlogan(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getSlogan() : null)
                 .etablissementType(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getTypeEtablissement().name() : null)
                 .aClassesCreche(aClassesCrechePour(utilisateur))
+                .etablissementUniquementCreche(etablissementUniquementCrechePour(utilisateur))
+                .estMonitrice(estMonitricePour(utilisateur))
                 .etablissementPlanTarifaire(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getPlanTarifaire() : null)
                 .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)

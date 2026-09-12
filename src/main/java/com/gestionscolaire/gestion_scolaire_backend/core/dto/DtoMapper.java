@@ -10,10 +10,14 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.Enseig
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DtoMapper {
+
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository;
 
     public ProfilDto toProfilDto(Profil profil) {
         if (profil == null) {
@@ -96,11 +100,13 @@ public class DtoMapper {
     }
 
     public EnseignantResponse toEnseignantResponse(Enseignant enseignant) {
+        boolean estMonitrice = classeRepository.existsByEnseignantPrincipalIdAndNiveauNomIgnoreCase(enseignant.getId(), "Crèche");
         return EnseignantResponse.builder()
                 .id(enseignant.getId())
                 .matricule(enseignant.getMatricule())
                 .biographie(enseignant.getBiographie())
                 .profil(toProfilDto(enseignant.getProfil()))
+                .estMonitrice(estMonitrice)
                 .build();
     }
 
