@@ -8,6 +8,7 @@ public interface ClasseRepository extends JpaRepository<Classe, Long> {
     List<Classe> findByNiveauId(Integer niveauId);
     List<Classe> findByEtablissementId(Long etablissementId);
     List<Classe> findByEnseignantPrincipalId(Long enseignantId);
+    boolean existsByEtablissementIdAndNiveauNomIgnoreCase(Long etablissementId, String niveauNom);
 }
 
 

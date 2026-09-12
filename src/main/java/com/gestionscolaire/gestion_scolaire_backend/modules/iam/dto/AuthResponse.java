@@ -24,6 +24,9 @@ public class AuthResponse {
     private String etablissementDevise;
     private String etablissementSlogan;
     private String etablissementType;
+    /** Vrai si l'établissement a au moins une classe de niveau "Crèche" — indépendant de etablissementType,
+     * pour couvrir les écoles hybrides (crèche + maternelle + primaire dans le même établissement). */
+    private Boolean aClassesCreche;
     private String etablissementPlanTarifaire;
     private Integer etablissementMaxEnseignants;
     private Long eleveId;

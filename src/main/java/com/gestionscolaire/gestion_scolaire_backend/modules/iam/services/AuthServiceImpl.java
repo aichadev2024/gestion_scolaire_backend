@@ -42,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final EleveRepository eleveRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService;
+    private final com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository;
 
     public AuthServiceImpl(
             AuthenticationManager authenticationManager,
@@ -50,7 +51,8 @@ public class AuthServiceImpl implements AuthService {
             ProfilRepository profilRepository,
             EmailService emailService,
             EleveRepository eleveRepository,
-            com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService
+            com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService,
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -59,11 +61,22 @@ public class AuthServiceImpl implements AuthService {
         this.emailService = emailService;
         this.eleveRepository = eleveRepository;
         this.tarifPlanService = tarifPlanService;
+        this.classeRepository = classeRepository;
     }
 
     private Integer limiteEnseignantsPour(Utilisateur utilisateur) {
         if (utilisateur.getEtablissement() == null) return null;
         return tarifPlanService.obtenirLimiteEnseignants(utilisateur.getEtablissement().getPlanTarifaire());
+    }
+
+    /**
+     * Indépendant de {@code typeEtablissement} : une école "classique" peut très bien avoir
+     * une section crèche (et inversement), donc on regarde les classes réellement créées plutôt
+     * que l'étiquette choisie à l'inscription.
+     */
+    private boolean aClassesCrechePour(Utilisateur utilisateur) {
+        if (utilisateur.getEtablissement() == null) return false;
+        return classeRepository.existsByEtablissementIdAndNiveauNomIgnoreCase(utilisateur.getEtablissement().getId(), "Crèche");
     }
 
     @Override
@@ -159,6 +172,7 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementDevise(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getDevise() : "FCFA")
                 .etablissementSlogan(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getSlogan() : null)
                 .etablissementType(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getTypeEtablissement().name() : null)
+                .aClassesCreche(aClassesCrechePour(utilisateur))
                 .etablissementPlanTarifaire(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getPlanTarifaire() : null)
                 .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)
@@ -244,6 +258,7 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementDevise(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getDevise() : "FCFA")
                 .etablissementSlogan(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getSlogan() : null)
                 .etablissementType(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getTypeEtablissement().name() : null)
+                .aClassesCreche(aClassesCrechePour(utilisateur))
                 .etablissementPlanTarifaire(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getPlanTarifaire() : null)
                 .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)
