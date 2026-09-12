@@ -55,10 +55,12 @@ public class RecuPdfService {
             document.add(new Paragraph("REÇU DE PAIEMENT", titleFont));
             document.add(new Paragraph(" "));
             String etablissementNom = "Gestion Scolaire";
-            if (paiement.getEleve() != null && paiement.getEleve().getProfil() != null && 
-                paiement.getEleve().getProfil().getUtilisateur() != null && 
-                paiement.getEleve().getProfil().getUtilisateur().getEtablissement() != null) {
-                etablissementNom = paiement.getEleve().getProfil().getUtilisateur().getEtablissement().getNom();
+            String devise = "FCFA";
+            if (paiement.getEleve() != null && paiement.getEleve().getEtablissement() != null) {
+                etablissementNom = paiement.getEleve().getEtablissement().getNom();
+                if (paiement.getEleve().getEtablissement().getDevise() != null && !paiement.getEleve().getEtablissement().getDevise().isBlank()) {
+                    devise = paiement.getEleve().getEtablissement().getDevise();
+                }
             }
             document.add(new Paragraph("Établissement : " + etablissementNom, normalFont));
             document.add(new Paragraph("N° Reçu : " + paiement.getNumeroRecu(), headerFont));
@@ -72,7 +74,7 @@ public class RecuPdfService {
             ajouterLigne(table, "Matricule", paiement.getEleve().getMatricule(), headerFont, normalFont);
             ajouterLigne(table, "Classe", classeEleve(paiement), headerFont, normalFont);
             ajouterLigne(table, "Frais", fraisTitre(paiement), headerFont, normalFont);
-            ajouterLigne(table, "Montant payé", String.format("%.2f FCFA", paiement.getMontantPaye()), headerFont, normalFont);
+            ajouterLigne(table, "Montant payé", String.format("%.2f %s", paiement.getMontantPaye(), devise), headerFont, normalFont);
             ajouterLigne(table, "Mode de paiement", paiement.getModePaiement(), headerFont, normalFont);
             if (paiement.getReferenceTransaction() != null) {
                 ajouterLigne(table, "Référence", paiement.getReferenceTransaction(), headerFont, normalFont);

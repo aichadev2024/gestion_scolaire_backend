@@ -13,4 +13,5 @@ public class ModifierEtablissementRequest {
     private String emailContact;
     private String telephone;
     private String adresse;
+    private String devise;
 }

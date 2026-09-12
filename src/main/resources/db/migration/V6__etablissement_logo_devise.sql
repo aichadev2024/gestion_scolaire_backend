@@ -1,0 +1,2 @@
+ALTER TABLE etablissements ADD COLUMN logo_url TEXT;
+ALTER TABLE etablissements ADD COLUMN devise VARCHAR(10) NOT NULL DEFAULT 'FCFA';

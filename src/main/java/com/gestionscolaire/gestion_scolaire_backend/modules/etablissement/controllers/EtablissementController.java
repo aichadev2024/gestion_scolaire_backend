@@ -5,12 +5,14 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.Et
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.ModifierEtablissementRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.RenouvellementRequest;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.StatutEtablissement;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.EtablissementLogoService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.EtablissementService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -22,13 +24,16 @@ public class EtablissementController {
 
     private final EtablissementService etablissementService;
     private final com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.RecuEtablissementPdfService recuEtablissementPdfService;
+    private final EtablissementLogoService logoService;
 
     public EtablissementController(
             EtablissementService etablissementService,
-            com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.RecuEtablissementPdfService recuEtablissementPdfService
+            com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.RecuEtablissementPdfService recuEtablissementPdfService,
+            EtablissementLogoService logoService
     ) {
         this.etablissementService = etablissementService;
         this.recuEtablissementPdfService = recuEtablissementPdfService;
+        this.logoService = logoService;
     }
 
     @PostMapping
@@ -82,6 +87,19 @@ public class EtablissementController {
     ) {
         return ResponseEntity.ok(etablissementService.renouvelerAbonnement(
                 id, request.getPlanTarifaire(), request.getDureeMois()));
+    }
+
+    /** Logo de l'établissement (personnalisation de marque). */
+    @PostMapping(value = "/{id}/logo", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> uploaderLogo(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        String url = logoService.uploadLogo(id, file);
+        return ResponseEntity.ok(Map.of("logoUrl", url));
+    }
+
+    @DeleteMapping("/{id}/logo")
+    public ResponseEntity<Void> supprimerLogo(@PathVariable Long id) {
+        logoService.removeLogo(id);
+        return ResponseEntity.noContent().build();
     }
 }
 

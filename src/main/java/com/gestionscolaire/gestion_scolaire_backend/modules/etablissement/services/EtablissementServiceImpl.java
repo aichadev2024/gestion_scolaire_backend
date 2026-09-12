@@ -155,6 +155,9 @@ public class EtablissementServiceImpl implements EtablissementService {
         etablissement.setEmailContact(request.getEmailContact());
         etablissement.setTelephone(request.getTelephone());
         etablissement.setAdresse(request.getAdresse());
+        if (request.getDevise() != null && !request.getDevise().isBlank()) {
+            etablissement.setDevise(request.getDevise().trim());
+        }
         Etablissement updated = etablissementRepository.save(etablissement);
         return mapToResponse(updated);
     }
@@ -218,6 +221,8 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .emailContact(etablissement.getEmailContact())
                 .telephone(etablissement.getTelephone())
                 .adresse(etablissement.getAdresse())
+                .logoUrl(etablissement.getLogoUrl())
+                .devise(etablissement.getDevise())
                 .statut(etablissement.getStatut())
                 .planTarifaire(etablissement.getPlanTarifaire())
                 .dateExpirationAbonnement(etablissement.getDateExpirationAbonnement())

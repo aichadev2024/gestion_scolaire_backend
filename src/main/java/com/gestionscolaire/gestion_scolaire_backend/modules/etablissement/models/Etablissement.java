@@ -35,6 +35,13 @@ public class Etablissement {
     @Column(length = 255)
     private String adresse;
 
+    @Column(name = "logo_url", columnDefinition = "TEXT")
+    private String logoUrl;
+
+    @Column(length = 10)
+    @Builder.Default
+    private String devise = "FCFA";
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

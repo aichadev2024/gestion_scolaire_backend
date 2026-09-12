@@ -147,6 +147,8 @@ public class AuthServiceImpl implements AuthService {
                 .nom(profil != null ? profil.getNom() : null)
                 .etablissementId(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getId() : null)
                 .etablissementNom(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getNom() : "Établissement Scolaire")
+                .etablissementLogoUrl(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getLogoUrl() : null)
+                .etablissementDevise(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getDevise() : "FCFA")
                 .eleveId(eleveId)
                 .classeNom(classeNom)
                 .build();
@@ -226,6 +228,8 @@ public class AuthServiceImpl implements AuthService {
                 .nom(profil != null ? profil.getNom() : null)
                 .etablissementId(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getId() : null)
                 .etablissementNom(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getNom() : "Établissement Scolaire")
+                .etablissementLogoUrl(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getLogoUrl() : null)
+                .etablissementDevise(utilisateur.getEtablissement() != null ? utilisateur.getEtablissement().getDevise() : "FCFA")
                 .eleveId(eleveId)
                 .classeNom(classeNom)
                 .message("Première connexion validée avec succès !")
