@@ -46,7 +46,7 @@ public class UtilisateurController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'PROMOTEUR')")
     public ResponseEntity<List<UtilisateurResponse>> listerTous() {
         List<UtilisateurResponse> response = utilisateurService.listerTous().stream()
                 .map(u -> dtoMapper.toUtilisateurResponse(u, profilRepository.findByUtilisateurId(u.getId()).orElse(null)))
