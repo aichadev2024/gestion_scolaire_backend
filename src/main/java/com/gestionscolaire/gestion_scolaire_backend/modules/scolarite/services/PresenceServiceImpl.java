@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -55,17 +56,39 @@ public class PresenceServiceImpl implements PresenceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
         tenantGuard.requireSameNiveau(eleve, this::niveauDe);
 
+        ClasseMatiere classeMatiere = null;
         if (classeMatiereId != null) {
-            ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
+            classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
                     .orElseThrow(() -> new ResourceNotFoundException("ClasseMatiere introuvable")));
-            presence.setClasseMatiere(classeMatiere);
         }
 
-        presence.setEleve(eleve);
-        presence.setEtablissement(eleve.getEtablissement());
-        Presence saved = presenceRepository.save(presence);
+        // Reprendre l'appel du jour (ex. correction d'une erreur, double clic sur « Valider »)
+        // met à jour la fiche existante au lieu d'en créer une nouvelle — sinon chaque revalidation
+        // gonflait le nombre d'absences/retards dans les statistiques et le récapitulatif annuel.
+        Optional<Presence> existante = classeMatiereId != null
+                ? presenceRepository.findByEleveIdAndClasseMatiereIdAndDate(eleveId, classeMatiereId, presence.getDate())
+                : presenceRepository.findByEleveIdAndClasseMatiereIsNullAndDate(eleveId, presence.getDate());
 
-        if ("ABSENT".equalsIgnoreCase(saved.getStatut()) || "RETARD".equalsIgnoreCase(saved.getStatut())) {
+        String ancienStatut = existante.map(Presence::getStatut).orElse(null);
+
+        Presence aSauvegarder;
+        if (existante.isPresent()) {
+            aSauvegarder = existante.get();
+            aSauvegarder.setStatut(presence.getStatut());
+            aSauvegarder.setEstJustifie(presence.getEstJustifie());
+            aSauvegarder.setNotesJustification(presence.getNotesJustification());
+        } else {
+            aSauvegarder = presence;
+            aSauvegarder.setEleve(eleve);
+            aSauvegarder.setClasseMatiere(classeMatiere);
+            aSauvegarder.setEtablissement(eleve.getEtablissement());
+        }
+
+        Presence saved = presenceRepository.save(aSauvegarder);
+
+        boolean estAlerte = "ABSENT".equalsIgnoreCase(saved.getStatut()) || "RETARD".equalsIgnoreCase(saved.getStatut());
+        boolean statutInchange = ancienStatut != null && ancienStatut.equalsIgnoreCase(saved.getStatut());
+        if (estAlerte && !statutInchange) {
             notifierParents(saved);
         }
         return saved;
