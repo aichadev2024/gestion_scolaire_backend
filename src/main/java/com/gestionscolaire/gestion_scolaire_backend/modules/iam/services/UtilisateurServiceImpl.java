@@ -108,6 +108,14 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                         .build());
             }
         }
+
+        // Un compte créé ici avec le rôle ENSEIGNANT (page « Comptes utilisateurs ») n'avait
+        // jusqu'ici aucune fiche enseignant associée — il n'apparaissait pas sur la page
+        // Enseignants et ne pouvait être assigné à aucune classe/matière. On crée désormais la
+        // fiche automatiquement, comme le fait déjà « Enseignants → Ajouter » (matricule généré).
+        if ("ENSEIGNANT".equalsIgnoreCase(nomRole)) {
+            creerFicheEnseignantSiAbsente(savedUser, savedProfil);
+        }
         }
 
         // Envoi automatique de l'email de bienvenue Brevo (si l'utilisateur possède un e-mail)
@@ -143,6 +151,45 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 }
             }
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * Répare au démarrage les comptes ENSEIGNANT créés AVANT ce correctif (via « Comptes
+     * utilisateurs », sans passer par « Enseignants ») et qui n'ont donc aucune fiche —
+     * invisibles sur la page Enseignants, impossibles à assigner à une classe/matière.
+     */
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void syncEnseignantsOnStartup() {
+        try {
+            List<Utilisateur> enseignantUsers = utilisateurRepository.findAll().stream()
+                    .filter(u -> u.getRole() != null && "ENSEIGNANT".equalsIgnoreCase(u.getRole().getNom()))
+                    .toList();
+
+            for (Utilisateur u : enseignantUsers) {
+                Profil p = profilRepository.findByUtilisateurId(u.getId()).orElse(null);
+                if (p != null) {
+                    creerFicheEnseignantSiAbsente(u, p);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** Matricule généré selon le même format que « Enseignants → Ajouter » (T-GEN-0001…). */
+    private void creerFicheEnseignantSiAbsente(Utilisateur utilisateur, Profil profil) {
+        if (enseignantRepository.findByProfilUtilisateurId(utilisateur.getId()).isPresent()) {
+            return;
+        }
+        String seq = String.format("%04d", enseignantRepository.count() + 1);
+        String matricule = "T-GEN-" + seq;
+        while (enseignantRepository.findByMatricule(matricule).isPresent()) {
+            seq = String.format("%04d", Integer.parseInt(seq) + 1);
+            matricule = "T-GEN-" + seq;
+        }
+        enseignantRepository.save(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant.builder()
+                .profil(profil)
+                .matricule(matricule)
+                .etablissement(utilisateur.getEtablissement())
+                .build());
     }
 
     @Override
