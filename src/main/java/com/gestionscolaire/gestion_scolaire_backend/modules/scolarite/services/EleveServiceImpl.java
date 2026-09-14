@@ -369,6 +369,9 @@ public class EleveServiceImpl implements EleveService {
         eleveRepository.delete(eleve);
     }
 
+    // Positions par défaut (celles du modèle qu'on fournit) — utilisées uniquement quand
+    // l'en-tête de la colonne n'a pas pu être reconnue (fichier sans en-tête, ou libellé
+    // qu'aucun synonyme ne couvre).
     private static final int COL_PRENOM = 0;
     private static final int COL_NOM = 1;
     private static final int COL_GENRE = 2;
@@ -377,6 +380,62 @@ public class EleveServiceImpl implements EleveService {
     private static final int COL_EMAIL_ELEVE = 5;
     private static final int COL_CLASSE = 6;
     private static final int COL_TELEPHONE_PARENT = 7;
+
+    // Synonymes reconnus par champ (comparés après suppression des accents et mise en
+    // minuscule) — permet d'importer un fichier que l'école a DÉJÀ, avec ses propres
+    // intitulés/ordre de colonnes, sans passer obligatoirement par notre modèle exact.
+    // Prénom avant Nom : "prénom" normalisé contient "nom" comme sous-chaîne, donc la
+    // colonne qu'il revendique est exclue avant que Nom ne cherche la sienne.
+    private static final java.util.List<String> SYN_PRENOM = java.util.List.of("prenom", "first name", "firstname", "given name");
+    private static final java.util.List<String> SYN_NOM = java.util.List.of("nom de famille", "last name", "lastname", "surname", "nom");
+    private static final java.util.List<String> SYN_GENRE = java.util.List.of("genre", "sexe", "gender", "sex");
+    private static final java.util.List<String> SYN_DATE_NAISSANCE = java.util.List.of("date de naissance", "date naissance", "naissance", "birth date", "date of birth", "ddn");
+    private static final java.util.List<String> SYN_TELEPHONE_ELEVE = java.util.List.of("telephone eleve", "tel eleve", "contact eleve", "telephone", "tel", "phone", "contact");
+    private static final java.util.List<String> SYN_EMAIL_ELEVE = java.util.List.of("email eleve", "e-mail", "email", "mail");
+    private static final java.util.List<String> SYN_CLASSE = java.util.List.of("classe", "class");
+    // Volontairement sans synonyme générique ("telephone" seul) : une colonne "Téléphone"
+    // ambiguë doit toujours être comprise comme celle de l'élève, pas du parent.
+    private static final java.util.List<String> SYN_TELEPHONE_PARENT = java.util.List.of("telephone du parent", "telephone parent", "tel parent", "contact parent", "numero parent");
+
+    /** Accents retirés, minuscules, espaces normalisés — pour comparer des libellés d'en-tête. */
+    private static String normaliserEntete(String s) {
+        if (s == null) return "";
+        String sansAccents = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return sansAccents.toLowerCase().trim().replaceAll("\\s+", " ");
+    }
+
+    /**
+     * Cherche, parmi les colonnes pas encore attribuées, celle dont l'en-tête contient un des
+     * synonymes (le plus long synonyme en premier, pour préférer un intitulé précis à un vague).
+     * À défaut, retombe sur la position du modèle standard — sauf si cette position est déjà
+     * prise par un autre champ (en-têtes partiellement reconnus) : dans ce cas le champ est
+     * considéré absent (-1) plutôt que de lire par erreur la colonne d'un autre champ.
+     */
+    private static int resoudreColonne(Row entete, DataFormatter formatter, java.util.List<String> synonymes,
+                                        java.util.Set<Integer> dejaAttribuees, int positionParDefaut) {
+        if (entete != null) {
+            java.util.List<String> tries = new ArrayList<>(synonymes);
+            tries.sort(java.util.Comparator.comparingInt(String::length).reversed());
+            int dernierIndex = entete.getLastCellNum();
+            for (String syn : tries) {
+                for (int i = 0; i < dernierIndex; i++) {
+                    if (dejaAttribuees.contains(i)) continue;
+                    Cell cell = entete.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    if (cell == null) continue;
+                    String texte = normaliserEntete(formatter.formatCellValue(cell));
+                    if (texte.contains(syn)) {
+                        dejaAttribuees.add(i);
+                        return i;
+                    }
+                }
+            }
+        }
+        if (positionParDefaut >= 0 && dejaAttribuees.add(positionParDefaut)) {
+            return positionParDefaut;
+        }
+        return -1;
+    }
 
     @Override
     public EleveImportRapport importerDepuisExcel(MultipartFile fichier, Long classeIdParDefaut) {
@@ -398,12 +457,28 @@ public class EleveServiceImpl implements EleveService {
             DataFormatter formatter = new DataFormatter();
             int derniereLigne = sheet.getLastRowNum();
 
+            // Détection des colonnes à partir de la ligne d'en-tête (ligne 1) — tolère un fichier
+            // que l'école possède déjà, avec ses propres intitulés et son propre ordre de colonnes.
+            Row ligneEntete = sheet.getRow(0);
+            java.util.Set<Integer> colonnesAttribuees = new java.util.HashSet<>();
+            int colPrenom = resoudreColonne(ligneEntete, formatter, SYN_PRENOM, colonnesAttribuees, COL_PRENOM);
+            int colNom = resoudreColonne(ligneEntete, formatter, SYN_NOM, colonnesAttribuees, COL_NOM);
+            int colGenre = resoudreColonne(ligneEntete, formatter, SYN_GENRE, colonnesAttribuees, COL_GENRE);
+            int colDateNaissance = resoudreColonne(ligneEntete, formatter, SYN_DATE_NAISSANCE, colonnesAttribuees, COL_DATE_NAISSANCE);
+            int colEmailEleve = resoudreColonne(ligneEntete, formatter, SYN_EMAIL_ELEVE, colonnesAttribuees, COL_EMAIL_ELEVE);
+            int colClasse = resoudreColonne(ligneEntete, formatter, SYN_CLASSE, colonnesAttribuees, COL_CLASSE);
+            // Téléphone du parent AVANT téléphone élève : le parent n'a que des synonymes
+            // qualifiés ("téléphone du parent"...), l'élève accepte aussi un "Téléphone" nu —
+            // si l'élève cherchait en premier, il pourrait voler la colonne du parent.
+            int colTelephoneParent = resoudreColonne(ligneEntete, formatter, SYN_TELEPHONE_PARENT, colonnesAttribuees, COL_TELEPHONE_PARENT);
+            int colTelephoneEleve = resoudreColonne(ligneEntete, formatter, SYN_TELEPHONE_ELEVE, colonnesAttribuees, COL_TELEPHONE_ELEVE);
+
             for (int i = 1; i <= derniereLigne; i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
 
-                String prenom = valeurCellule(row, COL_PRENOM, formatter);
-                String nom = valeurCellule(row, COL_NOM, formatter);
+                String prenom = valeurCellule(row, colPrenom, formatter);
+                String nom = valeurCellule(row, colNom, formatter);
                 if (prenom.isBlank() && nom.isBlank()) continue; // ligne vide
 
                 int numeroLigne = i + 1;
@@ -412,14 +487,14 @@ public class EleveServiceImpl implements EleveService {
                         throw new BadRequestException("Le prénom et le nom sont obligatoires.");
                     }
 
-                    String genreRaw = valeurCellule(row, COL_GENRE, formatter);
+                    String genreRaw = valeurCellule(row, colGenre, formatter);
                     String genre = "F".equalsIgnoreCase(genreRaw) ? "F" : "M";
 
-                    LocalDate dateNaissance = parserDateCellule(row, COL_DATE_NAISSANCE, formatter);
-                    String telephoneEleve = valeurCellule(row, COL_TELEPHONE_ELEVE, formatter);
-                    String emailEleve = valeurCellule(row, COL_EMAIL_ELEVE, formatter);
-                    String classeNom = valeurCellule(row, COL_CLASSE, formatter);
-                    String telephoneParent = valeurCellule(row, COL_TELEPHONE_PARENT, formatter);
+                    LocalDate dateNaissance = parserDateCellule(row, colDateNaissance, formatter);
+                    String telephoneEleve = valeurCellule(row, colTelephoneEleve, formatter);
+                    String emailEleve = valeurCellule(row, colEmailEleve, formatter);
+                    String classeNom = valeurCellule(row, colClasse, formatter);
+                    String telephoneParent = valeurCellule(row, colTelephoneParent, formatter);
 
                     Classe classe = classeParDefaut;
                     if (!classeNom.isBlank()) {
@@ -471,12 +546,14 @@ public class EleveServiceImpl implements EleveService {
     }
 
     private String valeurCellule(Row row, int idx, DataFormatter formatter) {
+        if (idx < 0) return "";
         Cell cell = row.getCell(idx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) return "";
         return formatter.formatCellValue(cell).trim();
     }
 
     private LocalDate parserDateCellule(Row row, int idx, DataFormatter formatter) {
+        if (idx < 0) return null;
         Cell cell = row.getCell(idx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) return null;
         if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
