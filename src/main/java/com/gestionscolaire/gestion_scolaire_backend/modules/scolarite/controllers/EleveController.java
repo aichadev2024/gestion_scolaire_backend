@@ -136,6 +136,20 @@ public class EleveController {
     public ResponseEntity<PromotionRapport> promouvoir(@Valid @RequestBody PromotionRequest request) {
         return ResponseEntity.ok(eleveService.promouvoir(request.getClasseDestinationId(), request.getEleveIds()));
     }
+
+    /** Récapitulatif Excel de fin d'année (moyenne, présence, statut) — classeId absent = tout l'établissement. */
+    @GetMapping("/recapitulatif")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<byte[]> recapitulatifAnnuel(
+            @RequestParam(value = "classeId", required = false) Long classeId,
+            @RequestParam("anneeScolaire") String anneeScolaire) {
+        byte[] bytes = eleveService.genererRecapitulatifAnnuel(classeId, anneeScolaire);
+        String nomFichier = "recapitulatif_" + anneeScolaire.replace("/", "-") + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + nomFichier)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
+    }
 }
 
 

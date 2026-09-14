@@ -23,6 +23,8 @@ public interface EleveService {
     byte[] genererModeleImportExcel();
     /** Fait passer les élèves sélectionnés dans une autre classe (ex. passage en classe supérieure). */
     PromotionRapport promouvoir(Long classeDestinationId, List<Long> eleveIds);
+    /** Récapitulatif Excel de fin d'année (moyenne, présence, statut) — classeId null = tout l'établissement. */
+    byte[] genererRecapitulatifAnnuel(Long classeId, String anneeScolaire);
 }
 
 

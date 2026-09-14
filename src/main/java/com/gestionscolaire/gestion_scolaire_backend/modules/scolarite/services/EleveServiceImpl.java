@@ -38,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 @Service
 @Transactional
@@ -547,6 +548,85 @@ public class EleveServiceImpl implements EleveService {
 
         return new com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.PromotionRapport(
                 eleveIds.size(), succes, eleveIds.size() - succes, resultats);
+    }
+
+    @Override
+    public byte[] genererRecapitulatifAnnuel(Long classeId, String anneeScolaire) {
+        List<Eleve> eleves = classeId != null ? listerElevesParClasse(classeId) : listerTous();
+
+        List<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.RecapitulatifLigne> lignes = new ArrayList<>();
+        for (Eleve e : eleves) {
+            List<Bulletin> bulletinsAnnee = bulletinRepository.findByEleveId(e.getId()).stream()
+                    .filter(b -> anneeScolaire.equalsIgnoreCase(b.getAnneeScolaire()))
+                    .toList();
+            Double moyenneAnnuelle = bulletinsAnnee.isEmpty()
+                    ? null
+                    : bulletinsAnnee.stream().mapToDouble(Bulletin::getMoyenneGenerale).average().orElse(0);
+
+            List<Presence> presences = presenceRepository.findByEleveId(e.getId());
+            long total = presences.size();
+            long presents = presences.stream().filter(p -> "PRESENT".equalsIgnoreCase(p.getStatut())).count();
+            long absences = presences.stream().filter(p -> "ABSENT".equalsIgnoreCase(p.getStatut())).count();
+            long retards = presences.stream().filter(p -> "RETARD".equalsIgnoreCase(p.getStatut())).count();
+            Double tauxPresence = total == 0 ? null : (presents * 100.0 / total);
+
+            lignes.add(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.RecapitulatifLigne.builder()
+                    .matricule(e.getMatricule())
+                    .nom(e.getProfil() != null ? e.getProfil().getNom() : null)
+                    .prenom(e.getProfil() != null ? e.getProfil().getPrenom() : null)
+                    .classeNom(e.getClasse() != null ? e.getClasse().getNom() : null)
+                    .moyenneAnnuelle(moyenneAnnuelle)
+                    .tauxPresence(tauxPresence)
+                    .nbAbsences((int) absences)
+                    .nbRetards((int) retards)
+                    .statut(e.getStatut())
+                    .statutInscription(e.getStatutInscription())
+                    .build());
+        }
+
+        lignes.sort(Comparator
+                .comparing((com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.RecapitulatifLigne l) ->
+                        l.getClasseNom() == null ? "" : l.getClasseNom())
+                .thenComparing(l -> l.getNom() == null ? "" : l.getNom()));
+
+        return genererExcelRecapitulatif(lignes, anneeScolaire);
+    }
+
+    private byte[] genererExcelRecapitulatif(
+            List<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.RecapitulatifLigne> lignes,
+            String anneeScolaire) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Récapitulatif " + anneeScolaire);
+            String[] entetes = {
+                    "Matricule", "Nom", "Prénom", "Classe", "Moyenne annuelle",
+                    "Taux de présence (%)", "Absences", "Retards", "Statut", "Statut inscription"
+            };
+            Row header = sheet.createRow(0);
+            for (int i = 0; i < entetes.length; i++) {
+                header.createCell(i).setCellValue(entetes[i]);
+                sheet.setColumnWidth(i, 20 * 256);
+            }
+
+            int ligneIdx = 1;
+            for (com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.RecapitulatifLigne l : lignes) {
+                Row row = sheet.createRow(ligneIdx++);
+                row.createCell(0).setCellValue(l.getMatricule());
+                row.createCell(1).setCellValue(l.getNom());
+                row.createCell(2).setCellValue(l.getPrenom());
+                row.createCell(3).setCellValue(l.getClasseNom());
+                if (l.getMoyenneAnnuelle() != null) row.createCell(4).setCellValue(l.getMoyenneAnnuelle());
+                if (l.getTauxPresence() != null) row.createCell(5).setCellValue(l.getTauxPresence());
+                row.createCell(6).setCellValue(l.getNbAbsences());
+                row.createCell(7).setCellValue(l.getNbRetards());
+                row.createCell(8).setCellValue(l.getStatut());
+                row.createCell(9).setCellValue(l.getStatutInscription());
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Erreur lors de la génération du récapitulatif : " + e.getMessage(), e);
+        }
     }
 }
 
