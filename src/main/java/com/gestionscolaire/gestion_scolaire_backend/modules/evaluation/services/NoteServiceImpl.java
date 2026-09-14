@@ -17,7 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -131,6 +133,57 @@ public class NoteServiceImpl implements NoteService {
         for (ClasseMatiere cm : matieres) {
             Double moyenneMatiere = calculerMoyenneEleveParMatiere(eleveId, cm.getId(), periode);
             sommeNotesCoeff += (moyenneMatiere * cm.getCoefficient());
+            sommeCoeff += cm.getCoefficient();
+        }
+
+        return (sommeCoeff == 0) ? 0.0 : (sommeNotesCoeff / sommeCoeff);
+    }
+
+    @Override
+    public Map<String, Double> moyennesParPeriodeMatiere(Long eleveId, Long classeMatiereId) {
+        List<Note> notes = noteRepository.findByEleveIdAndClasseMatiereId(eleveId, classeMatiereId);
+        Map<String, List<Note>> parPeriode = notes.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Note::getPeriode, LinkedHashMap::new, java.util.stream.Collectors.toList()));
+
+        Map<String, Double> moyennes = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Note>> entry : parPeriode.entrySet()) {
+            double total = entry.getValue().stream().mapToDouble(Note::getValeur).sum();
+            moyennes.put(entry.getKey(), total / entry.getValue().size());
+        }
+        return moyennes;
+    }
+
+    @Override
+    public Double calculerMoyenneAnnuelleMatiere(Long eleveId, Long classeMatiereId) {
+        Map<String, Double> parPeriode = moyennesParPeriodeMatiere(eleveId, classeMatiereId);
+        if (parPeriode.isEmpty()) {
+            return 0.0;
+        }
+        // Moyenne des moyennes de période — chaque trimestre/composition compte pour un, peu
+        // importe combien de notes y ont été saisies (une évaluation d'écart ne doit pas peser
+        // plus que trois compositions juste parce qu'elle a plus de notes derrière elle).
+        return parPeriode.values().stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+    }
+
+    @Override
+    public Double calculerMoyenneGeneraleAnnuelleEleve(Long eleveId) {
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+
+        if (eleve.getClasse() == null) {
+            return 0.0;
+        }
+
+        List<ClasseMatiere> matieres = classeMatiereRepository.findByClasseId(eleve.getClasse().getId());
+        if (matieres.isEmpty()) {
+            return 0.0;
+        }
+
+        double sommeNotesCoeff = 0.0;
+        double sommeCoeff = 0.0;
+        for (ClasseMatiere cm : matieres) {
+            Double moyenneAnnuelleMatiere = calculerMoyenneAnnuelleMatiere(eleveId, cm.getId());
+            sommeNotesCoeff += (moyenneAnnuelleMatiere * cm.getCoefficient());
             sommeCoeff += cm.getCoefficient();
         }
 

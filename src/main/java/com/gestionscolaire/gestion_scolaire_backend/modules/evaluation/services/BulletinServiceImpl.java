@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
 @Transactional
 public class BulletinServiceImpl implements BulletinService {
 
+    /** Période virtuelle : moyenne de toutes les compositions/trimestres de l'année, pas une note saisie. */
+    private static final String PERIODE_ANNUELLE = "ANNUEL";
+
     @Autowired
     private BulletinRepository bulletinRepository;
 
@@ -79,7 +82,9 @@ public class BulletinServiceImpl implements BulletinService {
                     com.gestionscolaire.gestion_scolaire_backend.core.verification.CodeGenerator.court());
         }
 
-        Double moyenneGenerale = noteService.calculerMoyenneGeneraleEleve(eleveId, periode);
+        Double moyenneGenerale = PERIODE_ANNUELLE.equalsIgnoreCase(periode)
+                ? noteService.calculerMoyenneGeneraleAnnuelleEleve(eleveId)
+                : noteService.calculerMoyenneGeneraleEleve(eleveId, periode);
         bulletin.setMoyenneGenerale(moyenneGenerale);
         
         // Simple appreciation logic for MVP
@@ -111,24 +116,41 @@ public class BulletinServiceImpl implements BulletinService {
         }
 
         List<BulletinLigneResponse> lignes = new ArrayList<>();
+        boolean estAnnuel = PERIODE_ANNUELLE.equalsIgnoreCase(periode);
 
         for (ClasseMatiere cm : matieres) {
-            List<Note> notesMatiere = noteRepository.findByEleveIdAndClasseMatiereId(eleveId, cm.getId())
-                    .stream()
-                    .filter(n -> n.getPeriode().equalsIgnoreCase(periode))
-                    .collect(Collectors.toList());
+            Double moyenneMatiere;
+            List<BulletinLigneResponse.NoteDetail> noteDetails;
 
-            Double moyenneMatiere = noteService.calculerMoyenneEleveParMatiere(eleveId, cm.getId(), periode);
+            if (estAnnuel) {
+                // Pas de notes individuelles pour "ANNUEL" — on affiche la moyenne de chaque
+                // période (composition/trimestre) qui a servi à calculer la moyenne annuelle.
+                moyenneMatiere = noteService.calculerMoyenneAnnuelleMatiere(eleveId, cm.getId());
+                noteDetails = noteService.moyennesParPeriodeMatiere(eleveId, cm.getId()).entrySet().stream()
+                        .map(e -> BulletinLigneResponse.NoteDetail.builder()
+                                .valeur(e.getValue())
+                                .noteMax(20.0)
+                                .typeEvaluation(e.getKey())
+                                .build())
+                        .collect(Collectors.toList());
+            } else {
+                List<Note> notesMatiere = noteRepository.findByEleveIdAndClasseMatiereId(eleveId, cm.getId())
+                        .stream()
+                        .filter(n -> n.getPeriode().equalsIgnoreCase(periode))
+                        .collect(Collectors.toList());
 
-            List<BulletinLigneResponse.NoteDetail> noteDetails = notesMatiere.stream().map(n -> 
-                BulletinLigneResponse.NoteDetail.builder()
-                    .id(n.getId())
-                    .valeur(n.getValeur())
-                    .noteMax(n.getNoteMax())
-                    .typeEvaluation(n.getTypeEvaluation())
-                    .appreciation(n.getAppreciation())
-                    .build()
-            ).collect(Collectors.toList());
+                moyenneMatiere = noteService.calculerMoyenneEleveParMatiere(eleveId, cm.getId(), periode);
+
+                noteDetails = notesMatiere.stream().map(n ->
+                    BulletinLigneResponse.NoteDetail.builder()
+                        .id(n.getId())
+                        .valeur(n.getValeur())
+                        .noteMax(n.getNoteMax())
+                        .typeEvaluation(n.getTypeEvaluation())
+                        .appreciation(n.getAppreciation())
+                        .build()
+                ).collect(Collectors.toList());
+            }
 
             lignes.add(BulletinLigneResponse.builder()
                     .classeMatiereId(cm.getId())
