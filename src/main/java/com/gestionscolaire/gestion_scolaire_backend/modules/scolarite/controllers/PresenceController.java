@@ -64,6 +64,15 @@ public class PresenceController {
         return ResponseEntity.ok(presenceService.listerPresencesParClasseMatiereEtDate(classeMatiereId, date));
     }
 
+    @GetMapping("/classe/{classeId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT')")
+    public ResponseEntity<List<Presence>> listerParClasseEtDate(
+            @PathVariable Long classeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return ResponseEntity.ok(presenceService.listerPresencesParClasseEtDate(classeId, date));
+    }
+
     // ── Présences des Enseignants ──
     @PostMapping("/enseignants")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR')")

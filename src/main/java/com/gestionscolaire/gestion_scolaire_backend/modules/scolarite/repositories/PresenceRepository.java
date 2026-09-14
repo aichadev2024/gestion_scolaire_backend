@@ -13,6 +13,7 @@ public interface PresenceRepository extends JpaRepository<Presence, Long> {
     List<Presence> findByClasseMatiereIdAndDate(Long classeMatiereId, LocalDate date);
     Optional<Presence> findByEleveIdAndClasseMatiereIdAndDate(Long eleveId, Long classeMatiereId, LocalDate date);
     Optional<Presence> findByEleveIdAndClasseMatiereIsNullAndDate(Long eleveId, LocalDate date);
+    List<Presence> findByEleve_Classe_IdAndDate(Long classeId, LocalDate date);
 }
 
 

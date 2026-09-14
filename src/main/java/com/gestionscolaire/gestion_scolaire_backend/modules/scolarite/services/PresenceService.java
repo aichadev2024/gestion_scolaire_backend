@@ -10,6 +10,11 @@ public interface PresenceService {
     List<Presence> listerPresencesEleve(Long eleveId);
     List<Presence> listerPresencesParClasseMatiereEtDate(Long classeMatiereId, LocalDate date);
 
+    /** Présences déjà enregistrées pour tous les élèves d'une classe à une date donnée, peu
+     * importe la matière (y compris les appels généraux sans matière) — pour que l'appel
+     * affiché reflète l'état réel au lieu de repartir de zéro à chaque ouverture. */
+    List<Presence> listerPresencesParClasseEtDate(Long classeId, LocalDate date);
+
     /**
      * Un parent justifie l'absence/le retard de son enfant. Vérifie que
      * l'appelant est bien un parent de l'élève concerné, puis notifie la

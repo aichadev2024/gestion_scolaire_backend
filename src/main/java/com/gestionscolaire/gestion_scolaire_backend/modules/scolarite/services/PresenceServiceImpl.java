@@ -197,6 +197,12 @@ public class PresenceServiceImpl implements PresenceService {
         return tenantGuard.filterSameNiveau(
                 tenantGuard.filterSameTenant(presenceRepository.findByClasseMatiereIdAndDate(classeMatiereId, date)), this::niveauDe);
     }
+
+    @Override
+    public List<Presence> listerPresencesParClasseEtDate(Long classeId, LocalDate date) {
+        return tenantGuard.filterSameNiveau(
+                tenantGuard.filterSameTenant(presenceRepository.findByEleve_Classe_IdAndDate(classeId, date)), this::niveauDe);
+    }
 }
 
 
