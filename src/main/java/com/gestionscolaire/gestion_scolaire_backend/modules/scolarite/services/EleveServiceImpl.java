@@ -329,13 +329,13 @@ public class EleveServiceImpl implements EleveService {
         return eleveRepository.save(eleve);
     }
 
-    private static final java.util.Set<String> STATUTS_PEDAGOGIQUES = java.util.Set.of("REGULIER", "REDOUBLANT");
+    private static final java.util.Set<String> STATUTS_PEDAGOGIQUES = java.util.Set.of("REGULIER", "REDOUBLANT", "CL");
 
     @Override
     public Eleve modifierStatutPedagogique(Long id, String statutPedagogique) {
         if (statutPedagogique == null || !STATUTS_PEDAGOGIQUES.contains(statutPedagogique.toUpperCase())) {
             throw new BadRequestException(
-                    "Statut pédagogique invalide. Valeurs acceptées : REGULIER, REDOUBLANT.");
+                    "Statut pédagogique invalide. Valeurs acceptées : REGULIER, REDOUBLANT, CL.");
         }
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id)));
