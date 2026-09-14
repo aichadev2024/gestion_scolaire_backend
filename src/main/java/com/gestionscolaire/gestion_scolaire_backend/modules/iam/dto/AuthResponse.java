@@ -43,6 +43,9 @@ public class AuthResponse {
     private Integer etablissementMaxEnseignants;
     private Long eleveId;
     private String classeNom;
+    /** ID de la fiche Enseignant liée à ce compte (role ENSEIGNANT) — distinct de utilisateurId,
+     * nécessaire pour tout appel filtré par enseignant (mes classes, emploi du temps, notes). */
+    private Long enseignantId;
     private Boolean requiresOtp;
     private String message;
 }

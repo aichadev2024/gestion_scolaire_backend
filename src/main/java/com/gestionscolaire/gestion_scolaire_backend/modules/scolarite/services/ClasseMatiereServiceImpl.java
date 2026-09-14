@@ -99,7 +99,33 @@ public class ClasseMatiereServiceImpl implements ClasseMatiereService {
 
     @Override
     public List<ClasseMatiere> listerParClasse(Long classeId) {
-        return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(classeMatiereRepository.findByClasseId(classeId)), this::niveauDe);
+        List<ClasseMatiere> classeMatieres = tenantGuard.filterSameNiveau(
+                tenantGuard.filterSameTenant(classeMatiereRepository.findByClasseId(classeId)), this::niveauDe);
+        return filtrerPourEnseignantConnecte(classeMatieres);
+    }
+
+    /**
+     * Un compte ENSEIGNANT ne doit voir, dans une classe où il intervient, que la (les) matière(s)
+     * qui lui sont réellement assignées — pas celles de ses collègues (sinon la saisie de notes
+     * proposerait des matières qu'il n'enseigne pas).
+     */
+    private List<ClasseMatiere> filtrerPourEnseignantConnecte(List<ClasseMatiere> classeMatieres) {
+        com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur utilisateur;
+        try {
+            utilisateur = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur();
+        } catch (Exception e) {
+            return classeMatieres;
+        }
+        if (utilisateur.getRole() == null || !"ENSEIGNANT".equalsIgnoreCase(utilisateur.getRole().getNom())) {
+            return classeMatieres;
+        }
+        Enseignant enseignant = enseignantRepository.findByProfilUtilisateurId(utilisateur.getId()).orElse(null);
+        if (enseignant == null) {
+            return List.of();
+        }
+        return classeMatieres.stream()
+                .filter(cm -> cm.getEnseignant() != null && enseignant.getId().equals(cm.getEnseignant().getId()))
+                .toList();
     }
 
     @Override

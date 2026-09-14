@@ -41,7 +41,36 @@ public class NoteServiceImpl implements NoteService {
     private UtilisateurRepository utilisateurRepository;
 
     @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository enseignantRepository;
+
+    @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
+    /**
+     * Un compte ENSEIGNANT ne peut saisir/consulter des notes que pour une ClasseMatiere qui lui
+     * est réellement assignée — sinon n'importe quel enseignant de l'établissement pouvait noter
+     * n'importe quelle matière, y compris celles de ses collègues. Les autres rôles (direction,
+     * secrétariat...) ne sont pas concernés.
+     */
+    private void verifierProprietaireSiEnseignant(ClasseMatiere classeMatiere) {
+        com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur utilisateur;
+        try {
+            utilisateur = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur();
+        } catch (Exception e) {
+            return;
+        }
+        if (utilisateur.getRole() == null || !"ENSEIGNANT".equalsIgnoreCase(utilisateur.getRole().getNom())) {
+            return;
+        }
+        Long enseignantId = enseignantRepository.findByProfilUtilisateurId(utilisateur.getId())
+                .map(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant::getId)
+                .orElse(null);
+        boolean estAssigne = enseignantId != null && classeMatiere.getEnseignant() != null
+                && enseignantId.equals(classeMatiere.getEnseignant().getId());
+        if (!estAssigne) {
+            throw new BadRequestException("Vous n'êtes pas l'enseignant assigné à cette matière pour cette classe.");
+        }
+    }
 
     @Override
     public Note enregistrerNote(Note note, Long eleveId, Long classeMatiereId, Long userCreateurId) {
@@ -51,6 +80,7 @@ public class NoteServiceImpl implements NoteService {
         ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
                 .orElseThrow(() -> new ResourceNotFoundException("ClasseMatiere introuvable")));
         tenantGuard.requireSameNiveau(classeMatiere, this::niveauDe);
+        verifierProprietaireSiEnseignant(classeMatiere);
 
         // Validation de note
         if (note.getValeur() < 0 || note.getValeur() > note.getNoteMax()) {

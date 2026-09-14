@@ -99,6 +99,15 @@ public class AuthServiceImpl implements AuthService {
                 .orElse(false);
     }
 
+    /** ID de la fiche Enseignant liée à ce compte (role ENSEIGNANT uniquement) — null sinon, ou si
+     * le compte n'a pas (encore) de fiche enseignant associée. */
+    private Long enseignantIdPour(Utilisateur utilisateur) {
+        if (utilisateur.getRole() == null || !"ENSEIGNANT".equalsIgnoreCase(utilisateur.getRole().getNom())) return null;
+        return enseignantRepository.findByProfilUtilisateurId(utilisateur.getId())
+                .map(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant::getId)
+                .orElse(null);
+    }
+
     @Override
     public AuthResponse login(LoginRequest request) {
         try {
@@ -201,6 +210,7 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)
                 .classeNom(classeNom)
+                .enseignantId(enseignantIdPour(utilisateur))
                 .build();
     }
 
@@ -291,6 +301,7 @@ public class AuthServiceImpl implements AuthService {
                 .etablissementMaxEnseignants(limiteEnseignantsPour(utilisateur))
                 .eleveId(eleveId)
                 .classeNom(classeNom)
+                .enseignantId(enseignantIdPour(utilisateur))
                 .message("Première connexion validée avec succès !")
                 .build();
     }

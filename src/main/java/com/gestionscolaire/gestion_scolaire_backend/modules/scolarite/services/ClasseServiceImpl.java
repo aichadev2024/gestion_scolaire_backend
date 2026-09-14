@@ -16,8 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -33,7 +35,39 @@ public class ClasseServiceImpl implements ClasseService {
     private EnseignantRepository enseignantRepository;
 
     @Autowired
+    private ClasseMatiereRepository classeMatiereRepository;
+
+    @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
+    /**
+     * Un compte ENSEIGNANT ne doit voir que les classes où il enseigne réellement (professeur
+     * principal OU au moins une matière assignée) — pas tout l'établissement/niveau. Les autres
+     * rôles (direction, secrétariat, comptabilité...) ne sont pas concernés par cette restriction.
+     */
+    private List<Classe> filtrerPourEnseignantConnecte(List<Classe> classes) {
+        com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur utilisateur;
+        try {
+            utilisateur = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur();
+        } catch (Exception e) {
+            return classes;
+        }
+        if (utilisateur.getRole() == null || !"ENSEIGNANT".equalsIgnoreCase(utilisateur.getRole().getNom())) {
+            return classes;
+        }
+        Enseignant enseignant = enseignantRepository.findByProfilUtilisateurId(utilisateur.getId()).orElse(null);
+        if (enseignant == null) {
+            return List.of();
+        }
+        Set<Long> mesClasseIds = new HashSet<>();
+        classeRepository.findByEnseignantPrincipalId(enseignant.getId()).forEach(c -> mesClasseIds.add(c.getId()));
+        classeMatiereRepository.findByEnseignantId(enseignant.getId()).forEach(cm -> {
+            if (cm.getClasse() != null) {
+                mesClasseIds.add(cm.getClasse().getId());
+            }
+        });
+        return classes.stream().filter(c -> mesClasseIds.contains(c.getId())).toList();
+    }
 
     @Override
     public Classe creerClasse(Classe classe, Integer niveauId, Long enseignantPrincipalId) {
@@ -95,7 +129,8 @@ public class ClasseServiceImpl implements ClasseService {
     public Optional<Classe> trouverParId(Long id) {
         return classeRepository.findById(id)
                 .filter(tenantGuard::appartientAuTenantCourant)
-                .filter(c -> tenantGuard.correspondAuNiveauCourant(c.getNiveau() != null ? c.getNiveau().getId() : null));
+                .filter(c -> tenantGuard.correspondAuNiveauCourant(c.getNiveau() != null ? c.getNiveau().getId() : null))
+                .filter(c -> !filtrerPourEnseignantConnecte(List.of(c)).isEmpty());
     }
 
     @Override
@@ -111,7 +146,8 @@ public class ClasseServiceImpl implements ClasseService {
         } else {
             classes = classeRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
         }
-        return tenantGuard.filterSameNiveau(classes, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
+        classes = tenantGuard.filterSameNiveau(classes, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
+        return filtrerPourEnseignantConnecte(classes);
     }
 
     @Override
