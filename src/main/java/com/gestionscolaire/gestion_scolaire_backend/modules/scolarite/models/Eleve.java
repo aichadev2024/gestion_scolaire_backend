@@ -59,6 +59,15 @@ public class Eleve implements TenantScoped {
     @Column(name = "statut_inscription", length = 20)
     private String statutInscription = "VALIDEE";
 
+    /**
+     * Statut pédagogique dans la classe actuelle : REGULIER ou REDOUBLANT.
+     * Distinct de {@link #statut} (actif/archivé) et de {@link #statutInscription}
+     * (dossier administratif) — sert notamment au passage en classe supérieure.
+     */
+    @Builder.Default
+    @Column(name = "statut_pedagogique", length = 20)
+    private String statutPedagogique = "REGULIER";
+
     /** Non persisté : mot de passe initial généré à l'inscription, renvoyé une seule fois à l'admin. */
     @Transient
     private String motDePasseInitial;

@@ -20,4 +20,5 @@ public class RecapitulatifLigne {
     private int nbRetards;
     private String statut;
     private String statutInscription;
+    private String statutPedagogique;
 }

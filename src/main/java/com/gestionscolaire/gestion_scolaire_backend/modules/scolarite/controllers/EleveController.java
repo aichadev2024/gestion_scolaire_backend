@@ -104,6 +104,15 @@ public class EleveController {
         return ResponseEntity.ok(dtoMapper.toEleveResponse(updated));
     }
 
+    /** Statut pédagogique dans la classe actuelle : REGULIER ou REDOUBLANT. */
+    @PatchMapping("/{id}/statut-pedagogique")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<EleveResponse> modifierStatutPedagogique(
+            @PathVariable Long id, @RequestBody Map<String, String> body) {
+        Eleve updated = eleveService.modifierStatutPedagogique(id, body.get("statutPedagogique"));
+        return ResponseEntity.ok(dtoMapper.toEleveResponse(updated));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {

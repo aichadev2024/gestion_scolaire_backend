@@ -324,7 +324,23 @@ public class EleveServiceImpl implements EleveService {
         }
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id)));
+        tenantGuard.requireSameNiveau(eleve, this::niveauDe);
         eleve.setStatutInscription(statutInscription.toUpperCase());
+        return eleveRepository.save(eleve);
+    }
+
+    private static final java.util.Set<String> STATUTS_PEDAGOGIQUES = java.util.Set.of("REGULIER", "REDOUBLANT");
+
+    @Override
+    public Eleve modifierStatutPedagogique(Long id, String statutPedagogique) {
+        if (statutPedagogique == null || !STATUTS_PEDAGOGIQUES.contains(statutPedagogique.toUpperCase())) {
+            throw new BadRequestException(
+                    "Statut pédagogique invalide. Valeurs acceptées : REGULIER, REDOUBLANT.");
+        }
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id)));
+        tenantGuard.requireSameNiveau(eleve, this::niveauDe);
+        eleve.setStatutPedagogique(statutPedagogique.toUpperCase());
         return eleveRepository.save(eleve);
     }
 
@@ -332,6 +348,7 @@ public class EleveServiceImpl implements EleveService {
     public void archiverEleve(Long id) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        tenantGuard.requireSameNiveau(eleve, this::niveauDe);
         eleve.setStatut("ARCHIVE");
         eleveRepository.save(eleve);
     }
@@ -340,6 +357,7 @@ public class EleveServiceImpl implements EleveService {
     public void supprimerEleve(Long id) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + id)));
+        tenantGuard.requireSameNiveau(eleve, this::niveauDe);
 
         // Suppression des dépendances (aucune contrainte FK n'est ON DELETE CASCADE)
         // avant la fiche élève, sinon la base rejette la suppression.
@@ -535,6 +553,9 @@ public class EleveServiceImpl implements EleveService {
                 }
 
                 eleve.setClasse(destination);
+                // Un élève qui passe en classe supérieure repart "régulier" dans sa nouvelle classe —
+                // l'étiquette "redoublant" ne concernait que son année précédente.
+                eleve.setStatutPedagogique("REGULIER");
                 eleveRepository.save(eleve);
                 effectifActuel++;
                 succes++;
@@ -581,6 +602,7 @@ public class EleveServiceImpl implements EleveService {
                     .nbRetards((int) retards)
                     .statut(e.getStatut())
                     .statutInscription(e.getStatutInscription())
+                    .statutPedagogique(e.getStatutPedagogique())
                     .build());
         }
 
@@ -599,7 +621,7 @@ public class EleveServiceImpl implements EleveService {
             Sheet sheet = workbook.createSheet("Récapitulatif " + anneeScolaire);
             String[] entetes = {
                     "Matricule", "Nom", "Prénom", "Classe", "Moyenne annuelle",
-                    "Taux de présence (%)", "Absences", "Retards", "Statut", "Statut inscription"
+                    "Taux de présence (%)", "Absences", "Retards", "Statut", "Statut inscription", "Statut pédagogique"
             };
             Row header = sheet.createRow(0);
             for (int i = 0; i < entetes.length; i++) {
@@ -620,6 +642,7 @@ public class EleveServiceImpl implements EleveService {
                 row.createCell(7).setCellValue(l.getNbRetards());
                 row.createCell(8).setCellValue(l.getStatut());
                 row.createCell(9).setCellValue(l.getStatutInscription());
+                row.createCell(10).setCellValue(l.getStatutPedagogique());
             }
 
             workbook.write(out);

@@ -19,6 +19,8 @@ public interface EleveService {
     void archiverEleve(Long id);
     void supprimerEleve(Long id);
     Eleve modifierStatutInscription(Long id, String statutInscription);
+    /** REGULIER ou REDOUBLANT — statut pédagogique dans la classe actuelle. */
+    Eleve modifierStatutPedagogique(Long id, String statutPedagogique);
     EleveImportRapport importerDepuisExcel(MultipartFile fichier, Long classeIdParDefaut);
     byte[] genererModeleImportExcel();
     /** Fait passer les élèves sélectionnés dans une autre classe (ex. passage en classe supérieure). */
