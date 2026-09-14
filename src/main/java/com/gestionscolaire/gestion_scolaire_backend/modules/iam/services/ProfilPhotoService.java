@@ -31,7 +31,9 @@ public class ProfilPhotoService {
         StorageService s = storageProvider.getIfAvailable();
         if (s == null) {
             throw new BadRequestException(
-                    "Le stockage d'images n'est pas configuré. Définissez les variables R2_* (voir docs/deploiement-production.md).");
+                    "Le stockage d'images n'est pas configuré sur le serveur. Sur Render, section Environment du "
+                            + "service backend, définissez : R2_ENABLED=true, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, "
+                            + "R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASE_URL (valeurs disponibles dans Cloudflare R2).");
         }
         return s;
     }
