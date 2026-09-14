@@ -7,9 +7,13 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisate
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.ClasseResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EleveResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.EnseignantResponse;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.FraisScolariteResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.FraisScolarite;
+import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.dto.NoteResponse;
+import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.models.Note;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -127,6 +131,30 @@ public class DtoMapper {
                 .enseignantPrincipalNom(ensNom)
                 .anneeScolaire(classe.getAnneeScolaire())
                 .capaciteMax(classe.getCapaciteMax())
+                .build();
+    }
+
+    public NoteResponse toNoteResponse(Note note) {
+        return NoteResponse.builder()
+                .id(note.getId())
+                .eleveId(note.getEleve() != null ? note.getEleve().getId() : null)
+                .classeMatiereId(note.getClasseMatiere() != null ? note.getClasseMatiere().getId() : null)
+                .periode(note.getPeriode())
+                .typeEvaluation(note.getTypeEvaluation())
+                .valeur(note.getValeur())
+                .noteMax(note.getNoteMax())
+                .appreciation(note.getAppreciation())
+                .build();
+    }
+
+    public FraisScolariteResponse toFraisScolariteResponse(FraisScolarite frais) {
+        return FraisScolariteResponse.builder()
+                .id(frais.getId())
+                .classeId(frais.getClasse() != null ? frais.getClasse().getId() : null)
+                .classeNom(frais.getClasse() != null ? frais.getClasse().getNom() : null)
+                .titre(frais.getTitre())
+                .montant(frais.getMontant())
+                .dateEcheance(frais.getDateEcheance())
                 .build();
     }
 }

@@ -1,6 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.controllers;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.dto.DtoMapper;
 import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.dto.NoteRequest;
+import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.dto.NoteResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.models.Note;
 import com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils;
 import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.services.NoteService;
@@ -18,14 +20,16 @@ import java.util.Map;
 public class NoteController {
 
     private final NoteService noteService;
+    private final DtoMapper dtoMapper;
 
-    public NoteController(NoteService noteService) {
+    public NoteController(NoteService noteService, DtoMapper dtoMapper) {
         this.noteService = noteService;
+        this.dtoMapper = dtoMapper;
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
-    public ResponseEntity<Note> enregistrer(@Valid @RequestBody NoteRequest request) {
+    public ResponseEntity<NoteResponse> enregistrer(@Valid @RequestBody NoteRequest request) {
         Note note = Note.builder()
                 .periode(request.getPeriode())
                 .typeEvaluation(request.getTypeEvaluation())
@@ -34,19 +38,19 @@ public class NoteController {
                 .appreciation(request.getAppreciation())
                 .build();
         Note saved = noteService.enregistrerNote(note, request.getEleveId(), request.getClasseMatiereId(), SecurityUtils.getCurrentUserId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toNoteResponse(saved));
     }
 
     @GetMapping("/eleve/{eleveId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
-    public ResponseEntity<List<Note>> listerParEleve(@PathVariable Long eleveId) {
-        return ResponseEntity.ok(noteService.listerNotesEleve(eleveId));
+    public ResponseEntity<List<NoteResponse>> listerParEleve(@PathVariable Long eleveId) {
+        return ResponseEntity.ok(noteService.listerNotesEleve(eleveId).stream().map(dtoMapper::toNoteResponse).toList());
     }
 
     @GetMapping("/classe-matiere/{classeMatiereId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
-    public ResponseEntity<List<Note>> listerParClasseMatiere(@PathVariable Long classeMatiereId) {
-        return ResponseEntity.ok(noteService.listerNotesParClasseMatiere(classeMatiereId));
+    public ResponseEntity<List<NoteResponse>> listerParClasseMatiere(@PathVariable Long classeMatiereId) {
+        return ResponseEntity.ok(noteService.listerNotesParClasseMatiere(classeMatiereId).stream().map(dtoMapper::toNoteResponse).toList());
     }
 
     @GetMapping("/eleve/{eleveId}/moyenne")
