@@ -65,6 +65,8 @@ public class DtoMapper {
                 .dateCreation(utilisateur.getDateCreation())
                 .profil(toProfilDto(profil))
                 .etablissementNom(etabNom)
+                .niveauSuperviseId(utilisateur.getNiveauSupervise() != null ? utilisateur.getNiveauSupervise().getId() : null)
+                .niveauSuperviseNom(utilisateur.getNiveauSupervise() != null ? utilisateur.getNiveauSupervise().getNom() : null)
                 .build();
     }
 

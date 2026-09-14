@@ -45,6 +45,7 @@ public class ClasseMatiereServiceImpl implements ClasseMatiereService {
     public ClasseMatiere assigner(Long classeId, Long matiereId, Long enseignantId, Double coefficient) {
         Classe classe = tenantGuard.requireSameTenant(classeRepository.findById(classeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
+        tenantGuard.requireSameNiveau(classe, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
         Matiere matiere = tenantGuard.requireSameTenant(matiereRepository.findById(matiereId)
                 .orElseThrow(() -> new ResourceNotFoundException("Matière introuvable")));
 
@@ -71,6 +72,7 @@ public class ClasseMatiereServiceImpl implements ClasseMatiereService {
     public ClasseMatiere modifier(Long id, Long enseignantId, Double coefficient) {
         ClasseMatiere cm = tenantGuard.requireSameTenant(classeMatiereRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignation classe-matière introuvable")));
+        tenantGuard.requireSameNiveau(cm, x -> x.getClasse() != null && x.getClasse().getNiveau() != null ? x.getClasse().getNiveau().getId() : null);
 
         if (coefficient != null) {
             cm.setCoefficient(coefficient);
@@ -84,20 +86,27 @@ public class ClasseMatiereServiceImpl implements ClasseMatiereService {
         return classeMatiereRepository.save(cm);
     }
 
+    private Integer niveauDe(ClasseMatiere cm) {
+        return cm.getClasse() != null && cm.getClasse().getNiveau() != null ? cm.getClasse().getNiveau().getId() : null;
+    }
+
     @Override
     public Optional<ClasseMatiere> trouverParId(Long id) {
-        return classeMatiereRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
+        return classeMatiereRepository.findById(id)
+                .filter(tenantGuard::appartientAuTenantCourant)
+                .filter(cm -> tenantGuard.correspondAuNiveauCourant(niveauDe(cm)));
     }
 
     @Override
     public List<ClasseMatiere> listerParClasse(Long classeId) {
-        return tenantGuard.filterSameTenant(classeMatiereRepository.findByClasseId(classeId));
+        return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(classeMatiereRepository.findByClasseId(classeId)), this::niveauDe);
     }
 
     @Override
     public void supprimer(Long id) {
         ClasseMatiere cm = tenantGuard.requireSameTenant(classeMatiereRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Assignation classe-matière introuvable")));
+        tenantGuard.requireSameNiveau(cm, this::niveauDe);
         classeMatiereRepository.delete(cm);
     }
 }

@@ -48,6 +48,7 @@ public class NoteServiceImpl implements NoteService {
 
         ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
                 .orElseThrow(() -> new ResourceNotFoundException("ClasseMatiere introuvable")));
+        tenantGuard.requireSameNiveau(classeMatiere, this::niveauDe);
 
         // Validation de note
         if (note.getValeur() < 0 || note.getValeur() > note.getNoteMax()) {
@@ -75,14 +76,22 @@ public class NoteServiceImpl implements NoteService {
         return noteRepository.save(note);
     }
 
+    private Integer niveauDe(ClasseMatiere cm) {
+        return cm.getClasse() != null && cm.getClasse().getNiveau() != null ? cm.getClasse().getNiveau().getId() : null;
+    }
+
+    private Integer niveauDe(Note n) {
+        return n.getClasseMatiere() != null ? niveauDe(n.getClasseMatiere()) : null;
+    }
+
     @Override
     public List<Note> listerNotesEleve(Long eleveId) {
-        return tenantGuard.filterSameTenant(noteRepository.findByEleveId(eleveId));
+        return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(noteRepository.findByEleveId(eleveId)), this::niveauDe);
     }
 
     @Override
     public List<Note> listerNotesParClasseMatiere(Long classeMatiereId) {
-        return tenantGuard.filterSameTenant(noteRepository.findByClasseMatiereId(classeMatiereId));
+        return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(noteRepository.findByClasseMatiereId(classeMatiereId)), this::niveauDe);
     }
 
     @Override

@@ -19,6 +19,9 @@ public class RegisterUtilisateurRequest {
 
     private String role;
 
+    /** Niveau auquel restreindre ce compte (ex. directeur/censeur d'un seul niveau) — null = accès à tout l'établissement. */
+    private Integer niveauSuperviseId;
+
     private ProfilDto profil;
 }
 

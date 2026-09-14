@@ -151,10 +151,21 @@ public class EnseignantServiceImpl implements EnseignantService {
 
     @Override
     public List<Enseignant> listerTous() {
+        List<Enseignant> enseignants;
         if (tenantGuard.crossTenant()) {
-            return enseignantRepository.findAll();
+            enseignants = enseignantRepository.findAll();
+        } else {
+            enseignants = enseignantRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
         }
-        return enseignantRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+        if (!tenantGuard.niveauRestreint()) {
+            return enseignants;
+        }
+        // Un enseignant n'a pas de niveau direct : visible pour un directeur restreint s'il est
+        // professeur principal d'au moins une classe de ce niveau.
+        return enseignants.stream()
+                .filter(e -> classeRepository.findByEnseignantPrincipalId(e.getId()).stream()
+                        .anyMatch(c -> tenantGuard.correspondAuNiveauCourant(c.getNiveau() != null ? c.getNiveau().getId() : null)))
+                .toList();
     }
 
     @Override

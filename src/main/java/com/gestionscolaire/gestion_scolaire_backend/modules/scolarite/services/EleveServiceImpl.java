@@ -118,7 +118,8 @@ public class EleveServiceImpl implements EleveService {
             Classe classe = tenantGuard.requireSameTenant(
                     classeRepository.findById(classeId)
                             .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
-            
+            tenantGuard.requireSameNiveau(classe, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
+
             // Vérification de la capacité maximale de la classe
             long effectifActuel = eleveRepository.findByClasseId(classeId).size();
             if (effectifActuel >= classe.getCapaciteMax()) {
@@ -173,10 +174,18 @@ public class EleveServiceImpl implements EleveService {
         return eleveRepository.save(eleve);
     }
 
+    private Integer niveauDe(Eleve e) {
+        return (e.getClasse() != null && e.getClasse().getNiveau() != null) ? e.getClasse().getNiveau().getId() : null;
+    }
+
     @Override
     public Eleve modifierEleve(Long id, Eleve eleveDetails, Profil profilDetails) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        // Élève sans classe encore : rien à protéger. Élève déjà affecté : doit être de mon niveau.
+        if (eleve.getClasse() != null) {
+            tenantGuard.requireSameNiveau(eleve, this::niveauDe);
+        }
 
         Profil profil = eleve.getProfil();
         profil.setPrenom(profilDetails.getPrenom());
@@ -192,6 +201,7 @@ public class EleveServiceImpl implements EleveService {
             Classe nouvelleClasse = tenantGuard.requireSameTenant(
                     classeRepository.findById(eleveDetails.getClasse().getId())
                             .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
+            tenantGuard.requireSameNiveau(nouvelleClasse, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
             eleve.setClasse(nouvelleClasse);
         }
 
@@ -221,8 +231,9 @@ public class EleveServiceImpl implements EleveService {
             if (!enfantsParParent.isEmpty()) eleve = Optional.of(enfantsParParent.get(0));
         }
 
-        // Cloisonnement : un élève d'un autre établissement est traité comme inexistant.
-        return eleve.filter(tenantGuard::appartientAuTenantCourant);
+        // Cloisonnement : un élève d'un autre établissement, ou hors du niveau supervisé, est traité comme inexistant.
+        return eleve.filter(tenantGuard::appartientAuTenantCourant)
+                .filter(e -> tenantGuard.correspondAuNiveauCourant(niveauDe(e)));
     }
 
     @Override
@@ -232,7 +243,7 @@ public class EleveServiceImpl implements EleveService {
 
     @Override
     public List<Eleve> listerElevesParClasse(Long classeId) {
-        return tenantGuard.filterSameTenant(eleveRepository.findByClasseId(classeId));
+        return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(eleveRepository.findByClasseId(classeId)), this::niveauDe);
     }
 
     @Override
@@ -292,10 +303,13 @@ public class EleveServiceImpl implements EleveService {
 
     @Override
     public List<Eleve> listerTous() {
+        List<Eleve> eleves;
         if (tenantGuard.crossTenant()) {
-            return eleveRepository.findAll();
+            eleves = eleveRepository.findAll();
+        } else {
+            eleves = eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
         }
-        return eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+        return tenantGuard.filterSameNiveau(eleves, this::niveauDe);
     }
 
     private static final java.util.Set<String> STATUTS_INSCRIPTION =
@@ -505,8 +519,12 @@ public class EleveServiceImpl implements EleveService {
         for (Long eleveId : eleveIds) {
             String nomComplet = null;
             try {
+                // La classe de destination n'est volontairement PAS restreinte au niveau de
+                // l'appelant : un directeur de primaire doit pouvoir faire passer ses élèves
+                // en 6ème (collège) au moment du passage — c'est justement le rôle de cette action.
                 Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                         .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable ID : " + eleveId)));
+                tenantGuard.requireSameNiveau(eleve, this::niveauDe);
                 nomComplet = eleve.getProfil() != null
                         ? (eleve.getProfil().getPrenom() + " " + eleve.getProfil().getNom()).trim()
                         : null;

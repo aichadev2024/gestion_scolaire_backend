@@ -3,6 +3,7 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.iam.models;
 import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantEntityListener;
 import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantScoped;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -38,6 +39,12 @@ public class Utilisateur implements TenantScoped {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "etablissement_id", nullable = true)
     private Etablissement etablissement;
+
+    /** Portée du compte : null = accès à tout l'établissement (comptable, secrétariat général...),
+     * sinon restreint à ce seul niveau (ex. directeur/censeur d'un niveau précis). */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "niveau_supervise_id")
+    private Niveau niveauSupervise;
 
     @Builder.Default
     @Column(name = "est_actif")

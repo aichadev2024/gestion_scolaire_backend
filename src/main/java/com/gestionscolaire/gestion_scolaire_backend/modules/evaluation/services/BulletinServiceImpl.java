@@ -51,6 +51,9 @@ public class BulletinServiceImpl implements BulletinService {
     public BulletinResponse genererBulletin(Long eleveId, String periode, String anneeScolaire) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        if (eleve.getClasse() != null) {
+            tenantGuard.requireSameNiveau(eleve.getClasse(), c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
+        }
 
         if (eleve.getClasse() == null) {
             throw new BadRequestException("L'élève n'est affecté à aucune classe.");
@@ -95,6 +98,9 @@ public class BulletinServiceImpl implements BulletinService {
     public BulletinResponse getBulletinDetails(Long eleveId, String periode, String anneeScolaire) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        if (eleve.getClasse() != null) {
+            tenantGuard.requireSameNiveau(eleve.getClasse(), c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
+        }
 
         Bulletin bulletin = bulletinRepository.findByEleveIdAndPeriodeAndAnneeScolaire(eleveId, periode, anneeScolaire)
                 .orElse(null);
@@ -160,6 +166,7 @@ public class BulletinServiceImpl implements BulletinService {
     public BulletinResponse verrouillerBulletin(Long bulletinId) {
         Bulletin bulletin = tenantGuard.requireSameTenant(bulletinRepository.findById(bulletinId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bulletin introuvable")));
+        tenantGuard.requireSameNiveau(bulletin, b -> b.getClasse() != null && b.getClasse().getNiveau() != null ? b.getClasse().getNiveau().getId() : null);
 
         bulletin.setEstVerrouille(true);
         bulletin = bulletinRepository.save(bulletin);

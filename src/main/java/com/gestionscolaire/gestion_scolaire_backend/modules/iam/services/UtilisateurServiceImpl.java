@@ -52,6 +52,12 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository enseignantRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository;
+
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.NiveauRepository niveauRepository;
+
     // @Lazy : EleveService/EnseignantService dépendent de UtilisateurService → on casse le cycle.
     @Autowired
     @Lazy
@@ -166,7 +172,34 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         if (tenantGuard.crossTenant()) {
             return utilisateurRepository.findAll();
         }
-        return utilisateurRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+        List<Utilisateur> comptes = utilisateurRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+        Integer restriction = tenantGuard.niveauSuperviseId();
+        if (restriction == null) {
+            return comptes;
+        }
+        return comptes.stream().filter(u -> estDuNiveau(u, restriction)).toList();
+    }
+
+    /**
+     * Un directeur/secrétaire restreint à un niveau ne voit que les comptes de ce même niveau.
+     * Les comptes eux-mêmes marqués {@code niveauSupervise} (directeur, secrétaire de niveau...)
+     * se comparent directement ; un enseignant n'a pas ce champ — sa visibilité se déduit des
+     * classes dont il est professeur principal.
+     */
+    private boolean estDuNiveau(Utilisateur u, Integer niveauId) {
+        if (u.getNiveauSupervise() != null) {
+            return niveauId.equals(u.getNiveauSupervise().getId());
+        }
+        String roleNom = u.getRole() != null ? u.getRole().getNom() : "";
+        if ("ENSEIGNANT".equalsIgnoreCase(roleNom)) {
+            return enseignantRepository.findByProfilUtilisateurId(u.getId())
+                    .map(ens -> classeRepository.findByEnseignantPrincipalId(ens.getId()).stream()
+                            .anyMatch(c -> c.getNiveau() != null && niveauId.equals(c.getNiveau().getId())))
+                    .orElse(false);
+        }
+        // Compte transverse non restreint (comptable, secrétariat général...) : invisible pour
+        // un compte restreint — évite qu'un directeur de niveau ne tombe dessus par surprise.
+        return false;
     }
 
     @Override
@@ -178,7 +211,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     }
 
     @Override
-    public Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole) {
+    public Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole, Integer niveauSuperviseId) {
         Utilisateur utilisateur = tenantGuard.requireSameTenant(utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id)));
 
@@ -198,6 +231,11 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                     .orElseThrow(() -> new ResourceNotFoundException("Rôle introuvable : " + nomRole));
             utilisateur.setRole(role);
         }
+
+        utilisateur.setNiveauSupervise(niveauSuperviseId != null
+                ? niveauRepository.findById(niveauSuperviseId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Niveau introuvable"))
+                : null);
 
         Utilisateur savedUser = utilisateurRepository.save(utilisateur);
 
@@ -243,15 +281,25 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     }
 
     @Override
-    public Utilisateur nommerDirecteur(Long id) {
+    public Utilisateur nommerDirecteur(Long id, Integer niveauId) {
+        if (niveauId == null) {
+            throw new BadRequestException("Le niveau à diriger est obligatoire (chaque directeur est rattaché à un seul niveau).");
+        }
         Utilisateur nouveauDirecteur = tenantGuard.requireSameTenant(utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable ID : " + id)));
 
         if (nouveauDirecteur.getEtablissement() == null) {
             throw new BadRequestException("Cet utilisateur n'est rattaché à aucun établissement.");
         }
-        if (nouveauDirecteur.getRole() != null && "DIRECTEUR".equalsIgnoreCase(nouveauDirecteur.getRole().getNom())) {
-            throw new BadRequestException("Cet utilisateur est déjà directeur.");
+        com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau niveau = niveauRepository.findById(niveauId)
+                .orElseThrow(() -> new ResourceNotFoundException("Niveau introuvable"));
+
+        boolean dejaDirecteurDeCeNiveau = nouveauDirecteur.getRole() != null
+                && "DIRECTEUR".equalsIgnoreCase(nouveauDirecteur.getRole().getNom())
+                && nouveauDirecteur.getNiveauSupervise() != null
+                && niveauId.equals(nouveauDirecteur.getNiveauSupervise().getId());
+        if (dejaDirecteurDeCeNiveau) {
+            throw new BadRequestException("Cet utilisateur est déjà directeur de ce niveau.");
         }
 
         Role roleDirecteur = roleRepository.findByNom("DIRECTEUR")
@@ -259,16 +307,19 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         Role roleSecretaire = roleRepository.findByNom("SECRETAIRE")
                 .orElseThrow(() -> new ResourceNotFoundException("Rôle introuvable : SECRETAIRE"));
 
-        // Un établissement n'a qu'un directeur actif à la fois : l'ancien titulaire
-        // redevient Secrétaire plutôt que d'être désactivé — il garde son accès.
+        // Un niveau n'a qu'un directeur actif à la fois — mais les directeurs des AUTRES niveaux
+        // (crèche, primaire, lycée...) restent en place : la séparation par niveau est le but même
+        // de cette fonctionnalité. L'ancien titulaire de CE niveau redevient Secrétaire (garde son accès).
         utilisateurRepository.findByEtablissementId(nouveauDirecteur.getEtablissement().getId()).stream()
                 .filter(u -> u.getRole() != null && "DIRECTEUR".equalsIgnoreCase(u.getRole().getNom()))
+                .filter(u -> u.getNiveauSupervise() != null && niveauId.equals(u.getNiveauSupervise().getId()))
                 .forEach(u -> {
                     u.setRole(roleSecretaire);
                     utilisateurRepository.save(u);
                 });
 
         nouveauDirecteur.setRole(roleDirecteur);
+        nouveauDirecteur.setNiveauSupervise(niveau);
         return utilisateurRepository.save(nouveauDirecteur);
     }
 }

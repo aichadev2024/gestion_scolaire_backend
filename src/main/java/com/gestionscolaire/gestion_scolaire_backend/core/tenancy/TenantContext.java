@@ -15,14 +15,19 @@ package com.gestionscolaire.gestion_scolaire_backend.core.tenancy;
  */
 public final class TenantContext {
 
-    private record Holder(Long etablissementId, boolean crossTenant) {}
+    private record Holder(Long etablissementId, boolean crossTenant, Integer niveauSuperviseId) {}
 
     private static final ThreadLocal<Holder> HOLDER = new ThreadLocal<>();
 
     private TenantContext() {}
 
     public static void set(Long etablissementId, boolean crossTenant) {
-        HOLDER.set(new Holder(etablissementId, crossTenant));
+        set(etablissementId, crossTenant, null);
+    }
+
+    /** @param niveauSuperviseId non-null si ce compte est restreint à un seul niveau (voir {@link #getNiveauSuperviseId()}). */
+    public static void set(Long etablissementId, boolean crossTenant, Integer niveauSuperviseId) {
+        HOLDER.set(new Holder(etablissementId, crossTenant, niveauSuperviseId));
     }
 
     public static void clear() {
@@ -59,5 +64,11 @@ public final class TenantContext {
             throw new IllegalStateException("L'utilisateur courant n'est rattaché à aucun établissement.");
         }
         return h.etablissementId();
+    }
+
+    /** Niveau auquel ce compte est restreint, ou {@code null} s'il a accès à tout l'établissement. */
+    public static Integer getNiveauSuperviseId() {
+        Holder h = HOLDER.get();
+        return h == null ? null : h.niveauSuperviseId();
     }
 }

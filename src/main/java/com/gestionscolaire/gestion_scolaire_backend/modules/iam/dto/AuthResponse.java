@@ -35,6 +35,10 @@ public class AuthResponse {
      * "Crèche" — propre à la personne, pas à l'établissement : dans une école mixte, seuls certains membres
      * du personnel sont des monitrices. */
     private Boolean estMonitrice;
+    /** Niveau auquel CE compte est restreint (directeur/censeur/secrétaire d'un seul niveau) —
+     * null s'il a accès à tout l'établissement (comptable, secrétariat général...). */
+    private Integer niveauSuperviseId;
+    private String niveauSuperviseNom;
     private String etablissementPlanTarifaire;
     private Integer etablissementMaxEnseignants;
     private Long eleveId;

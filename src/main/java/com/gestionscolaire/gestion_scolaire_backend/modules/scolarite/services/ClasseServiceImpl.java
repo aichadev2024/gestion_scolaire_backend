@@ -37,6 +37,10 @@ public class ClasseServiceImpl implements ClasseService {
 
     @Override
     public Classe creerClasse(Classe classe, Integer niveauId, Long enseignantPrincipalId) {
+        if (!tenantGuard.correspondAuNiveauCourant(niveauId)) {
+            throw new com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException(
+                    "Vous ne pouvez créer que des classes de votre propre niveau.");
+        }
         Niveau niveau = niveauRepository.findById(niveauId)
                 .orElseThrow(() -> new ResourceNotFoundException("Niveau introuvable"));
         classe.setNiveau(niveau);
@@ -60,12 +64,17 @@ public class ClasseServiceImpl implements ClasseService {
     public Classe modifierClasse(Long id, Classe classeDetails, Integer niveauId, Long enseignantPrincipalId) {
         Classe classe = tenantGuard.requireSameTenant(classeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable")));
+        tenantGuard.requireSameNiveau(classe, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
 
         classe.setNom(classeDetails.getNom());
         classe.setCapaciteMax(classeDetails.getCapaciteMax());
         classe.setAnneeScolaire(classeDetails.getAnneeScolaire());
 
         if (niveauId != null) {
+            if (!tenantGuard.correspondAuNiveauCourant(niveauId)) {
+                throw new com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException(
+                        "Vous ne pouvez déplacer cette classe que vers votre propre niveau.");
+            }
             Niveau niveau = niveauRepository.findById(niveauId)
                     .orElseThrow(() -> new ResourceNotFoundException("Niveau introuvable"));
             classe.setNiveau(niveau);
@@ -84,7 +93,9 @@ public class ClasseServiceImpl implements ClasseService {
 
     @Override
     public Optional<Classe> trouverParId(Long id) {
-        return classeRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
+        return classeRepository.findById(id)
+                .filter(tenantGuard::appartientAuTenantCourant)
+                .filter(c -> tenantGuard.correspondAuNiveauCourant(c.getNiveau() != null ? c.getNiveau().getId() : null));
     }
 
     @Override
@@ -94,16 +105,20 @@ public class ClasseServiceImpl implements ClasseService {
 
     @Override
     public List<Classe> listerToutes() {
+        List<Classe> classes;
         if (tenantGuard.crossTenant()) {
-            return classeRepository.findAll();
+            classes = classeRepository.findAll();
+        } else {
+            classes = classeRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
         }
-        return classeRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+        return tenantGuard.filterSameNiveau(classes, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
     }
 
     @Override
     public void supprimerClasse(Long id) {
         Classe classe = tenantGuard.requireSameTenant(classeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Classe introuvable ID : " + id)));
+        tenantGuard.requireSameNiveau(classe, c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
         classeRepository.delete(classe);
     }
 }

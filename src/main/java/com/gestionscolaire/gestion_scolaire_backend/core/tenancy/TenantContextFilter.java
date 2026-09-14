@@ -39,7 +39,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
                     TenantContext.set(null, true);
                 } else {
                     Long etablissementId = (u.getEtablissement() != null) ? u.getEtablissement().getId() : null;
-                    TenantContext.set(etablissementId, false);
+                    Integer niveauSuperviseId = (u.getNiveauSupervise() != null) ? u.getNiveauSupervise().getId() : null;
+                    TenantContext.set(etablissementId, false, niveauSuperviseId);
                 }
             }
             filterChain.doFilter(request, response);

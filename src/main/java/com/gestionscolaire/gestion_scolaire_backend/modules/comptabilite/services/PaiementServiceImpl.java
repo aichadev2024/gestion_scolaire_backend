@@ -40,10 +40,15 @@ public class PaiementServiceImpl implements PaiementService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    private Integer niveauDe(Eleve e) {
+        return (e.getClasse() != null && e.getClasse().getNiveau() != null) ? e.getClasse().getNiveau().getId() : null;
+    }
+
     @Override
     public Paiement enregistrerPaiement(Paiement paiement, Long eleveId, Long fraisId, Long userReceptionnaireId) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        tenantGuard.requireSameNiveau(eleve, this::niveauDe);
 
         if (fraisId != null) {
             FraisScolarite frais = tenantGuard.requireSameTenant(fraisScolariteRepository.findById(fraisId)
@@ -67,7 +72,9 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<Paiement> listerPaiementsEleve(Long eleveId) {
-        return tenantGuard.filterSameTenant(paiementRepository.findByEleveId(eleveId));
+        return tenantGuard.filterSameNiveau(
+                tenantGuard.filterSameTenant(paiementRepository.findByEleveId(eleveId)),
+                p -> p.getEleve() != null ? niveauDe(p.getEleve()) : null);
     }
 
     @Override
@@ -102,6 +109,7 @@ public class PaiementServiceImpl implements PaiementService {
         List<Eleve> eleves = tenantGuard.crossTenant()
                 ? eleveRepository.findAll()
                 : eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
+        eleves = tenantGuard.filterSameNiveau(eleves, this::niveauDe);
 
         List<RetardPaiementResponse> retards = new java.util.ArrayList<>();
 

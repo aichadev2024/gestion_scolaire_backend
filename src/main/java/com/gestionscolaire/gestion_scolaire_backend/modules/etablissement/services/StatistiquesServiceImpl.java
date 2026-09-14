@@ -7,11 +7,15 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.models.
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.repositories.PaiementRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.StatistiquesEtablissementResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Enseignant;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.FraisScolarite;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EnseignantRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.FraisScolariteRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository;
 import org.springframework.stereotype.Service;
 
@@ -48,6 +52,10 @@ public class StatistiquesServiceImpl implements StatistiquesService {
         this.paiementRepository = paiementRepository;
     }
 
+    private Integer niveauDe(Eleve e) {
+        return (e.getClasse() != null && e.getClasse().getNiveau() != null) ? e.getClasse().getNiveau().getId() : null;
+    }
+
     @Override
     public StatistiquesEtablissementResponse obtenirPourEtablissementCourant() {
         Etablissement etablissement;
@@ -61,12 +69,31 @@ public class StatistiquesServiceImpl implements StatistiquesService {
         }
         Long etabId = tenantGuard.requireEtablissementId();
 
-        int totalEleves = eleveRepository.findByEtablissementId(etabId).size();
-        int totalEnseignants = enseignantRepository.findByEtablissementId(etabId).size();
-        int totalClasses = classeRepository.findByEtablissementId(etabId).size();
-        int totalPersonnel = utilisateurRepository.findByEtablissementId(etabId).size();
+        // Un directeur/censeur restreint à un niveau (le cas normal depuis la séparation par
+        // niveau) ne voit QUE les chiffres de son niveau — jamais ceux de l'établissement entier.
+        List<Classe> classes = tenantGuard.filterSameNiveau(classeRepository.findByEtablissementId(etabId),
+                c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
+        List<Eleve> eleves = tenantGuard.filterSameNiveau(eleveRepository.findByEtablissementId(etabId), this::niveauDe);
+        List<Enseignant> enseignants = tenantGuard.niveauRestreint()
+                ? enseignantRepository.findByEtablissementId(etabId).stream()
+                        .filter(en -> classeRepository.findByEnseignantPrincipalId(en.getId()).stream()
+                                .anyMatch(c -> tenantGuard.correspondAuNiveauCourant(c.getNiveau() != null ? c.getNiveau().getId() : null)))
+                        .toList()
+                : enseignantRepository.findByEtablissementId(etabId);
+        List<Utilisateur> personnel = tenantGuard.niveauRestreint()
+                ? utilisateurRepository.findByEtablissementId(etabId).stream()
+                        .filter(u -> u.getNiveauSupervise() != null && tenantGuard.correspondAuNiveauCourant(u.getNiveauSupervise().getId()))
+                        .toList()
+                : utilisateurRepository.findByEtablissementId(etabId);
 
-        List<FraisScolarite> fraisList = fraisScolariteRepository.findByEtablissementId(etabId);
+        int totalEleves = eleves.size();
+        int totalEnseignants = enseignants.size();
+        int totalClasses = classes.size();
+        int totalPersonnel = personnel.size();
+
+        List<FraisScolarite> fraisList = tenantGuard.filterSameNiveau(
+                fraisScolariteRepository.findByEtablissementId(etabId),
+                f -> f.getClasse() != null && f.getClasse().getNiveau() != null ? f.getClasse().getNiveau().getId() : null);
         Map<Long, Integer> effectifParClasse = new HashMap<>();
         double totalFraisAttendus = 0;
         for (FraisScolarite frais : fraisList) {
@@ -76,7 +103,9 @@ public class StatistiquesServiceImpl implements StatistiquesService {
             totalFraisAttendus += frais.getMontant() * effectif;
         }
 
-        double totalEncaisse = paiementRepository.findByEtablissementId(etabId).stream()
+        double totalEncaisse = tenantGuard.filterSameNiveau(paiementRepository.findByEtablissementId(etabId),
+                        p -> p.getEleve() != null ? niveauDe(p.getEleve()) : null)
+                .stream()
                 .mapToDouble(Paiement::getMontantPaye)
                 .sum();
 

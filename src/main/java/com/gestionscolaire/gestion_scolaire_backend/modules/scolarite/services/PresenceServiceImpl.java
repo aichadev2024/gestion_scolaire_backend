@@ -53,6 +53,7 @@ public class PresenceServiceImpl implements PresenceService {
     public Presence enregistrerPresence(Presence presence, Long eleveId, Long classeMatiereId) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        tenantGuard.requireSameNiveau(eleve, this::niveauDe);
 
         if (classeMatiereId != null) {
             ClasseMatiere classeMatiere = tenantGuard.requireSameTenant(classeMatiereRepository.findById(classeMatiereId)
@@ -155,14 +156,23 @@ public class PresenceServiceImpl implements PresenceService {
                 && parent.getProfil().getUtilisateur().getId().equals(utilisateurId);
     }
 
+    private Integer niveauDe(Eleve e) {
+        return (e.getClasse() != null && e.getClasse().getNiveau() != null) ? e.getClasse().getNiveau().getId() : null;
+    }
+
+    private Integer niveauDe(Presence p) {
+        return p.getEleve() != null ? niveauDe(p.getEleve()) : null;
+    }
+
     @Override
     public List<Presence> listerPresencesEleve(Long eleveId) {
-        return tenantGuard.filterSameTenant(presenceRepository.findByEleveId(eleveId));
+        return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(presenceRepository.findByEleveId(eleveId)), this::niveauDe);
     }
 
     @Override
     public List<Presence> listerPresencesParClasseMatiereEtDate(Long classeMatiereId, LocalDate date) {
-        return tenantGuard.filterSameTenant(presenceRepository.findByClasseMatiereIdAndDate(classeMatiereId, date));
+        return tenantGuard.filterSameNiveau(
+                tenantGuard.filterSameTenant(presenceRepository.findByClasseMatiereIdAndDate(classeMatiereId, date)), this::niveauDe);
     }
 }
 

@@ -12,10 +12,10 @@ public interface UtilisateurService {
     Optional<Utilisateur> trouverParEmail(String email);
     List<Utilisateur> listerTous();
     void modifierStatut(Long id, boolean estActif);
-    Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole);
+    Utilisateur modifierUtilisateur(Long id, Utilisateur details, Profil profilDetails, String nomRole, Integer niveauSuperviseId);
     void supprimerUtilisateur(Long id);
-    /** Nomme cet utilisateur DIRECTEUR de son établissement ; l'ancien (ou les anciens) titulaire(s) redevien(nen)t Secrétaire. */
-    Utilisateur nommerDirecteur(Long id);
+    /** Nomme cet utilisateur DIRECTEUR du niveau donné ; l'ancien titulaire de CE niveau (s'il y en a un) redevient Secrétaire. */
+    Utilisateur nommerDirecteur(Long id, Integer niveauId);
 }
 
 

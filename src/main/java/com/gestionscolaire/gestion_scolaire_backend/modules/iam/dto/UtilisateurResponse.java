@@ -18,6 +18,8 @@ public class UtilisateurResponse {
     private java.time.LocalDateTime dateCreation;
     private ProfilDto profil;
     private String etablissementNom;
+    private Integer niveauSuperviseId;
+    private String niveauSuperviseNom;
 }
 
 

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Aide au cloisonnement par établissement dans la couche service.
@@ -64,5 +65,46 @@ public class TenantGuard {
             return List.copyOf(entities);
         }
         return entities.stream().filter(this::appartientAuTenantCourant).toList();
+    }
+
+    // ── Portée par niveau (directeur/censeur restreint à un seul niveau) ──────────────────
+    //
+    // Contrairement à l'établissement, la plupart des entités n'ont pas de champ "niveau"
+    // direct (il faut le résoudre via classe.getNiveau(), eleve.getClasse().getNiveau(), etc.) —
+    // c'est pourquoi ces méthodes prennent un extracteur plutôt qu'une interface marqueur.
+
+    /** Niveau auquel l'appelant est restreint, ou {@code null} s'il a accès à tout l'établissement. */
+    public Integer niveauSuperviseId() {
+        return TenantContext.getNiveauSuperviseId();
+    }
+
+    public boolean niveauRestreint() {
+        return niveauSuperviseId() != null;
+    }
+
+    /** Vrai si l'appelant n'est pas restreint par niveau, ou si {@code niveauId} correspond au sien. */
+    public boolean correspondAuNiveauCourant(Integer niveauId) {
+        Integer restriction = niveauSuperviseId();
+        return restriction == null || restriction.equals(niveauId);
+    }
+
+    public <T> T requireSameNiveau(T entity, Function<T, Integer> niveauExtractor) {
+        if (entity == null) {
+            throw new ResourceNotFoundException("Ressource introuvable");
+        }
+        if (!correspondAuNiveauCourant(niveauExtractor.apply(entity))) {
+            throw new ResourceNotFoundException("Ressource introuvable");
+        }
+        return entity;
+    }
+
+    public <T> List<T> filterSameNiveau(Collection<T> entities, Function<T, Integer> niveauExtractor) {
+        if (entities == null) {
+            return List.of();
+        }
+        if (!niveauRestreint()) {
+            return List.copyOf(entities);
+        }
+        return entities.stream().filter(e -> correspondAuNiveauCourant(niveauExtractor.apply(e))).toList();
     }
 }
