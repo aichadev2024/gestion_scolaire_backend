@@ -92,7 +92,9 @@ public class RapportJournalierServiceImpl implements RapportJournalierService {
         String titre = "Rapport du jour disponible";
         String contenu = String.format("Le rapport journalier de %s du %s est disponible.", nomComplet, rapport.getDate().format(FMT_DATE));
 
-        for (Parent parent : List.of(eleve.getParent(), eleve.getParentSecondaire())) {
+        // Arrays.asList (pas List.of) : List.of() lève une NullPointerException dès qu'un
+        // seul élément est null, or la plupart des élèves n'ont pas de parent secondaire.
+        for (Parent parent : java.util.Arrays.asList(eleve.getParent(), eleve.getParentSecondaire())) {
             if (parent == null || parent.getProfil() == null || parent.getProfil().getUtilisateur() == null) continue;
             try {
                 Notification n = Notification.builder().titre(titre).contenu(contenu).build();

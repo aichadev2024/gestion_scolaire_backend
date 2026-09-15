@@ -137,7 +137,10 @@ public class PresenceServiceImpl implements PresenceService {
             // pas de contexte d'authentification (ex. appel interne) : notification envoyée sans expéditeur
         }
 
-        for (Parent parent : List.of(eleve.getParent(), eleve.getParentSecondaire())) {
+        // Arrays.asList (pas List.of) : List.of() lève une NullPointerException dès qu'un
+        // seul élément est null, or la plupart des élèves n'ont pas de parent secondaire —
+        // marquer n'importe quel élève absent/en retard plantait systématiquement ici.
+        for (Parent parent : java.util.Arrays.asList(eleve.getParent(), eleve.getParentSecondaire())) {
             if (parent == null || parent.getProfil() == null || parent.getProfil().getUtilisateur() == null) continue;
             try {
                 Notification n = Notification.builder().titre(titre).contenu(contenu).build();
