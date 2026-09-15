@@ -21,6 +21,8 @@ public class AuthResponse {
     private Long etablissementId;
     private String etablissementNom;
     private String etablissementLogoUrl;
+    /** Contact officiel de l'établissement — affiché sur la carte scolaire ("en cas de perte"). */
+    private String etablissementTelephone;
     private String etablissementDevise;
     private String etablissementSlogan;
     private String etablissementType;
