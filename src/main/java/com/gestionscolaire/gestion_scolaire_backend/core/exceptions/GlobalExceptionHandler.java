@@ -52,7 +52,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex, HttpServletRequest request) {
         logger.error("Runtime Error at {}: ", request.getRequestURI(), ex);
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
+        // Une exception sans message (ex. NullPointerException nue) arrivait telle quelle
+        // jusqu'au client : message JSON `null`, que les apps traduisent en erreur générique
+        // ("Requête invalide") impossible à diagnostiquer sans les logs serveur. On donne au
+        // moins le type de l'erreur pour qu'un problème réel ne ressemble plus à un bug fantôme.
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            message = "Erreur inattendue (" + ex.getClass().getSimpleName() + "). Contactez le support si ça persiste.";
+        }
+        return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)

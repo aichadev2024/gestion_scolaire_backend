@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Transactional
@@ -65,15 +64,22 @@ public class PresenceServiceImpl implements PresenceService {
         // Reprendre l'appel du jour (ex. correction d'une erreur, double clic sur « Valider »)
         // met à jour la fiche existante au lieu d'en créer une nouvelle — sinon chaque revalidation
         // gonflait le nombre d'absences/retards dans les statistiques et le récapitulatif annuel.
-        Optional<Presence> existante = classeMatiereId != null
+        List<Presence> existantes = classeMatiereId != null
                 ? presenceRepository.findByEleveIdAndClasseMatiereIdAndDate(eleveId, classeMatiereId, presence.getDate())
                 : presenceRepository.findByEleveIdAndClasseMatiereIsNullAndDate(eleveId, presence.getDate());
 
-        String ancienStatut = existante.map(Presence::getStatut).orElse(null);
+        String ancienStatut = existantes.isEmpty() ? null : existantes.get(existantes.size() - 1).getStatut();
 
         Presence aSauvegarder;
-        if (existante.isPresent()) {
-            aSauvegarder = existante.get();
+        if (!existantes.isEmpty()) {
+            // S'il existe plusieurs fiches pour le même (élève, matière, date) — résidu d'avant
+            // ce correctif d'idempotence, quand chaque revalidation créait une nouvelle ligne —
+            // on ne garde que la plus récente et on supprime les doublons au passage.
+            existantes.sort(java.util.Comparator.comparing(Presence::getId));
+            aSauvegarder = existantes.get(existantes.size() - 1);
+            if (existantes.size() > 1) {
+                presenceRepository.deleteAll(existantes.subList(0, existantes.size() - 1));
+            }
             aSauvegarder.setStatut(presence.getStatut());
             aSauvegarder.setEstJustifie(presence.getEstJustifie());
             aSauvegarder.setNotesJustification(presence.getNotesJustification());
