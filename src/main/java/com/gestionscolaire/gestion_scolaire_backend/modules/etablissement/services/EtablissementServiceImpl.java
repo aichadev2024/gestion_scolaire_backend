@@ -29,6 +29,7 @@ public class EtablissementServiceImpl implements EtablissementService {
     private final DtoMapper dtoMapper;
     private final RecuEtablissementPdfService recuEtablissementPdfService;
     private final com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService emailService;
+    private final com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.NiveauRepository niveauRepository;
 
     public EtablissementServiceImpl(
             EtablissementRepository etablissementRepository,
@@ -37,7 +38,8 @@ public class EtablissementServiceImpl implements EtablissementService {
             com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.ProfilRepository profilRepository,
             DtoMapper dtoMapper,
             RecuEtablissementPdfService recuEtablissementPdfService,
-            com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService emailService
+            com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService emailService,
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.NiveauRepository niveauRepository
     ) {
         this.etablissementRepository = etablissementRepository;
         this.utilisateurService = utilisateurService;
@@ -46,6 +48,7 @@ public class EtablissementServiceImpl implements EtablissementService {
         this.dtoMapper = dtoMapper;
         this.recuEtablissementPdfService = recuEtablissementPdfService;
         this.emailService = emailService;
+        this.niveauRepository = niveauRepository;
     }
 
     private String genererCodeEtablissementAutomatique(String nom) {
@@ -107,26 +110,48 @@ public class EtablissementServiceImpl implements EtablissementService {
 
         Etablissement savedEtablissement = etablissementRepository.save(etablissement);
 
-        // email de fallback si non fourni
-        String adminEmail = (request.getAdminEmail() != null && !request.getAdminEmail().isBlank())
-                ? request.getAdminEmail()
-                : request.getAdminUsername() + "@" + savedEtablissement.getCode() + ".netaa-ecole.com";
+        // Créer chaque compte DIRECTEUR demandé. La plupart des écoles n'en ont qu'un (accès à
+        // tout) ; certaines en ont un par niveau (ex. Censeur du Lycée + Directeur du Collège) —
+        // dans ce cas `request.getDirecteurs()` contient plusieurs entrées. Si un niveau est
+        // fourni pour une entrée (ex. Lycée), ce compte est directement restreint à ce niveau dès
+        // la création — le libellé "Censeur" (cf. AuthResponse/EmailServiceImpl) en découle
+        // automatiquement, sans passer par « Nommer directeur » après coup. Chacun reçoit son
+        // propre e-mail de bienvenue avec ses identifiants (géré par utilisateurService.inscrire).
+        String premierEmailDirecteur = null;
+        for (com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.DirecteurCreationDto directeurDto : request.getDirecteurs()) {
+            String directeurEmail = (directeurDto.getEmail() != null && !directeurDto.getEmail().isBlank())
+                    ? directeurDto.getEmail()
+                    : directeurDto.getUsername() + "@" + savedEtablissement.getCode() + ".netaa-ecole.com";
+            if (premierEmailDirecteur == null) {
+                premierEmailDirecteur = directeurEmail;
+            }
 
-        // Créer l'administrateur initial de cette école
-        Utilisateur admin = Utilisateur.builder()
-                .username(request.getAdminUsername())
-                .email(adminEmail)
-                .motDePasse(request.getAdminMotDePasse())
-                .etablissement(savedEtablissement)
-                .build();
+            com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau niveauSupervise =
+                    directeurDto.getNiveauSuperviseId() != null
+                            ? niveauRepository.findById(directeurDto.getNiveauSuperviseId()).orElse(null)
+                            : null;
 
-        Profil profil = dtoMapper.toProfil(request.getAdminProfil());
-        utilisateurService.inscrire(admin, profil, "DIRECTEUR");
+            Utilisateur admin = Utilisateur.builder()
+                    .username(directeurDto.getUsername())
+                    .email(directeurEmail)
+                    .motDePasse(directeurDto.getMotDePasse())
+                    .etablissement(savedEtablissement)
+                    .niveauSupervise(niveauSupervise)
+                    .build();
 
-        // Génération automatique du reçu PDF et envoi par e-mail
+            Profil profil = dtoMapper.toProfil(directeurDto.getProfil());
+            utilisateurService.inscrire(admin, profil, "DIRECTEUR");
+        }
+
+        // Génération automatique du reçu PDF et envoi par e-mail (au contact de l'établissement,
+        // ou au premier directeur créé à défaut) — les identifiants de connexion, eux, ont déjà été
+        // envoyés individuellement à chaque directeur ci-dessus, pas dans cet e-mail.
         try {
             byte[] pdfBytes = recuEtablissementPdfService.genererRecuAbonnementPdf(savedEtablissement.getId());
-            emailService.sendEtablissementCreatedWithPdf(savedEtablissement, adminEmail, request.getAdminMotDePasse(), pdfBytes);
+            String destinataireRecu = (savedEtablissement.getEmailContact() != null && !savedEtablissement.getEmailContact().isBlank())
+                    ? savedEtablissement.getEmailContact()
+                    : premierEmailDirecteur;
+            emailService.sendEtablissementCreatedWithPdf(savedEtablissement, destinataireRecu, pdfBytes);
         } catch (Exception e) {
             System.err.println("Avertissement : Erreur lors de l'envoi du mail/PDF de reçu d'établissement : " + e.getMessage());
         }
@@ -213,10 +238,14 @@ public class EtablissementServiceImpl implements EtablissementService {
         String adminNomComplet = null;
         String adminEmail = null;
 
+        // S'il y a plusieurs DIRECTEUR (un par niveau), on privilégie pour l'affichage "Admin
+        // principal" celui qui a accès à tout l'établissement (niveauSupervise == null) plutôt
+        // qu'un directeur/censeur restreint à un seul niveau — plus représentatif du "principal".
         List<Utilisateur> users = utilisateurRepository.findByEtablissementId(etablissement.getId());
         Utilisateur admin = users.stream()
-                .filter(u -> u.getRole() != null && "DIRECTEUR".equalsIgnoreCase(u.getRole().getNom()))
+                .filter(u -> u.getRole() != null && "DIRECTEUR".equalsIgnoreCase(u.getRole().getNom()) && u.getNiveauSupervise() == null)
                 .findFirst()
+                .or(() -> users.stream().filter(u -> u.getRole() != null && "DIRECTEUR".equalsIgnoreCase(u.getRole().getNom())).findFirst())
                 .orElse(users.isEmpty() ? null : users.get(0));
 
         if (admin != null) {

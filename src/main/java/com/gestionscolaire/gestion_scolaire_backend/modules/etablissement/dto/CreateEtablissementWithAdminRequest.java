@@ -1,12 +1,12 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto;
 
-import com.gestionscolaire.gestion_scolaire_backend.modules.iam.dto.ProfilDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class CreateEtablissementWithAdminRequest {
@@ -25,18 +25,10 @@ public class CreateEtablissementWithAdminRequest {
     /** ECOLE (défaut) ou CRECHE. */
     private String typeEtablissement;
 
-    // ── Premier administrateur de l'école ─────────────────────────
-    @NotBlank(message = "Le nom d'utilisateur de l'administrateur est obligatoire")
-    private String adminUsername;
-
-    private String adminEmail;
-
-    @NotBlank(message = "Le mot de passe de l'administrateur est obligatoire")
-    private String adminMotDePasse;
-
-    @NotNull(message = "Le profil de l'administrateur est obligatoire")
+    /** Comptes DIRECTEUR à créer avec l'établissement — un seul (accès à tout) pour la plupart des
+     * écoles, ou plusieurs (un par niveau, ex. Censeur du Lycée + Directeur du Collège) pour les
+     * établissements organisés ainsi. Au moins un est obligatoire. */
+    @NotEmpty(message = "Au moins un directeur est obligatoire")
     @Valid
-    private ProfilDto adminProfil;
+    private List<DirecteurCreationDto> directeurs;
 }
-
-

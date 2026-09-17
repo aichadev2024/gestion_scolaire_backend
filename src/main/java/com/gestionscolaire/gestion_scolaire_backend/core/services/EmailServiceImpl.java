@@ -32,9 +32,16 @@ public class EmailServiceImpl implements EmailService {
         }
 
         String rawRole = user.getRole() != null ? user.getRole().getNom() : "Utilisateur";
+        // Comparaison souple (pas d'égalité stricte) : le nom réel du niveau peut être plus
+        // descriptif que le simple "Lycée" du jeu de données de référence (ex. "Lycée Secondaire
+        // Général (10ème - Terminale)") — même logique que categoriePourClasse côté admin web.
+        boolean estCenseurLycee = "DIRECTEUR".equalsIgnoreCase(rawRole)
+                && user.getNiveauSupervise() != null
+                && user.getNiveauSupervise().getNom() != null
+                && user.getNiveauSupervise().getNom().toLowerCase().matches(".*lyc[eé]e.*");
         String roleLabel = switch (rawRole.toUpperCase()) {
             case "SUPER_ADMIN" -> "Administrateur Général (Super-Admin)";
-            case "DIRECTEUR" -> "Directeur d'Établissement";
+            case "DIRECTEUR" -> estCenseurLycee ? "Censeur d'Établissement" : "Directeur d'Établissement";
             case "SECRETAIRE" -> "Secrétaire";
             case "COMPTABLE" -> "Comptable";
             case "ENSEIGNANT" -> "Enseignant";
@@ -165,9 +172,9 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendEtablissementCreatedWithPdf(com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etab, String adminEmail, String adminPassword, byte[] pdfBytes) {
-        String recipient = (adminEmail != null && !adminEmail.isBlank()) 
-                ? adminEmail 
+    public void sendEtablissementCreatedWithPdf(com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etab, String destinataire, byte[] pdfBytes) {
+        String recipient = (destinataire != null && !destinataire.isBlank())
+                ? destinataire
                 : (etab.getEmailContact() != null ? etab.getEmailContact() : "netaa.ecole.mali@gmail.com");
 
         String subject = "🎉 Activation Netaa École — Attestation & Reçu : " + etab.getNom();
@@ -187,10 +194,8 @@ public class EmailServiceImpl implements EmailService {
                         L'établissement <strong>%s</strong> (Code : <code>%s</code>) a été enregistré et activé sur Netaa École.
                     </p>
                     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <h4 style="color: #1B365D; margin-top: 0;">🔑 Identifiants d'Accès Administrateur :</h4>
-                        <p style="margin: 5px 0;"><strong>Identifiant / Email :</strong> %s</p>
-                        <p style="margin: 5px 0;"><strong>Mot de passe initial :</strong> <code>%s</code></p>
                         <p style="margin: 5px 0;"><strong>Plan Souscrit :</strong> Plan %s (Valable jusqu'au %s)</p>
+                        <p style="margin: 5px 0; color: #64748b;">Les identifiants de connexion ont été envoyés par e-mail séparément à chaque compte de direction créé pour cet établissement.</p>
                     </div>
                     <p style="font-size: 14px; color: #64748b;">
                         📄 <strong>Reçu de Paiement Joint :</strong> L'attestation officielle et le reçu d'abonnement au format PDF est joint à cet e-mail pour vos archives et impression.
@@ -203,7 +208,7 @@ public class EmailServiceImpl implements EmailService {
                     &copy; 2026 Netaa École — République du Mali. Tous droits réservés.
                 </div>
             </div>
-            """.formatted(etab.getNom(), etab.getCode(), recipient, adminPassword, etab.getPlanTarifaire(), formattedDate, frontendUrl + "/login");
+            """.formatted(etab.getNom(), etab.getCode(), etab.getPlanTarifaire(), formattedDate, frontendUrl + "/login");
 
         logger.info("🎉 [ÉTABLISSEMENT] Envoi du reçu PDF et identifiants pour [{}] à [{}]", etab.getNom(), recipient);
         sendMailInternalWithAttachment(recipient, subject, htmlBody, pdfBytes, "Recu_Abonnement_" + etab.getCode() + ".pdf");
