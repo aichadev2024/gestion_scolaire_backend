@@ -14,5 +14,6 @@ public interface PresenceEnseignantRepository extends JpaRepository<PresenceEnse
     List<PresenceEnseignant> findByEtablissementId(Long etablissementId);
     List<PresenceEnseignant> findByEtablissementIdAndDate(Long etablissementId, LocalDate date);
     List<PresenceEnseignant> findByEnseignantId(Long enseignantId);
+    List<PresenceEnseignant> findByEtablissementIdAndDateBetweenOrderByDateAsc(Long etablissementId, LocalDate debut, LocalDate fin);
     Optional<PresenceEnseignant> findByEnseignantIdAndDate(Long enseignantId, LocalDate date);
 }

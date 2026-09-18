@@ -98,6 +98,15 @@ public class PresenceController {
         return ResponseEntity.ok(presenceEnseignantService.listerParDate(date));
     }
 
+    @GetMapping("/enseignants/fiche")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<List<com.gestionscolaire.gestion_scolaire_backend.core.dto.EmargementEnseignantResponse>> ficheEmargementEnseignants(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin
+    ) {
+        return ResponseEntity.ok(presenceEnseignantService.listerFiche(debut, fin));
+    }
+
     @GetMapping("/enseignants/{enseignantId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'ENSEIGNANT')")
     public ResponseEntity<List<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.PresenceEnseignant>> listerPresencesParEnseignant(
