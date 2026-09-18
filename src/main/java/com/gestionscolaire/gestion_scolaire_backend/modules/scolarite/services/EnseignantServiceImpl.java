@@ -104,10 +104,19 @@ public class EnseignantServiceImpl implements EnseignantService {
 
         com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur savedUser = utilisateurService.inscrire(user, profil, "ENSEIGNANT");
         profil = profilRepository.findByUtilisateurId(savedUser.getId()).orElse(profil);
-        enseignant.setProfil(profil);
-        if (etablissement != null) enseignant.setEtablissement(etablissement);
 
-        Enseignant saved = enseignantRepository.save(enseignant);
+        // inscrire(..., "ENSEIGNANT") crée déjà la fiche enseignant : on la complète au lieu d'en
+        // enregistrer une seconde (matricule et profil sont uniques → violation de contrainte).
+        Enseignant saved = enseignantRepository.findByProfilUtilisateurId(savedUser.getId()).orElse(null);
+        if (saved != null) {
+            saved.setBiographie(enseignant.getBiographie());
+            if (etablissement != null) saved.setEtablissement(etablissement);
+        } else {
+            enseignant.setProfil(profil);
+            if (etablissement != null) enseignant.setEtablissement(etablissement);
+            saved = enseignant;
+        }
+        saved = enseignantRepository.save(saved);
         saved.setMotDePasseInitial(motDePasseInitial);
         return saved;
     }
