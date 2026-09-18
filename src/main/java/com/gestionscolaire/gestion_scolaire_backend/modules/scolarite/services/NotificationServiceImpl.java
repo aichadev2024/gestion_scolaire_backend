@@ -68,6 +68,22 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public void notifierParentsEleve(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve eleve, String titre, String contenu, Long expediteurId) {
+        if (eleve == null) return;
+        // Arrays.asList (pas List.of) : la plupart des élèves n'ont pas de parent secondaire (null).
+        for (com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Parent parent
+                : java.util.Arrays.asList(eleve.getParent(), eleve.getParentSecondaire())) {
+            if (parent == null || parent.getProfil() == null || parent.getProfil().getUtilisateur() == null) continue;
+            try {
+                envoyerNotification(Notification.builder().titre(titre).contenu(contenu).build(),
+                        expediteurId, parent.getProfil().getUtilisateur().getId());
+            } catch (Exception e) {
+                log.warn("Notification « {} » non envoyée au parent {} : {}", titre, parent.getId(), e.getMessage());
+            }
+        }
+    }
+
+    @Override
     public List<Notification> listerPourDestinataire(Long destinataireId) {
         return tenantGuard.filterSameTenant(notificationRepository.findByDestinataireIdOrderByDateCreationDesc(destinataireId));
     }

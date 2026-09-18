@@ -46,6 +46,9 @@ public class NoteServiceImpl implements NoteService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.NotificationService notificationService;
+
     /**
      * Un compte ENSEIGNANT ne peut saisir/consulter des notes que pour une ClasseMatiere qui lui
      * est réellement assignée — sinon n'importe quel enseignant de l'établissement pouvait noter
@@ -105,7 +108,33 @@ public class NoteServiceImpl implements NoteService {
             note.setCreePar(createur);
         }
 
-        return noteRepository.save(note);
+        Note saved = noteRepository.save(note);
+        notifierParents(saved, userCreateurId);
+        return saved;
+    }
+
+    /** Informe les parents dès qu'une note est saisie (push + notification dans l'appli). */
+    private void notifierParents(Note note, Long expediteurId) {
+        try {
+            Eleve eleve = note.getEleve();
+            String nomEleve = eleve.getProfil() != null
+                    ? (eleve.getProfil().getPrenom() + " " + eleve.getProfil().getNom()).trim()
+                    : "Votre enfant";
+            String matiere = note.getClasseMatiere() != null && note.getClasseMatiere().getMatiere() != null
+                    ? note.getClasseMatiere().getMatiere().getNom() : "une matière";
+            String type = note.getTypeEvaluation() != null ? note.getTypeEvaluation().toLowerCase().replace('_', ' ') : "évaluation";
+            double max = note.getNoteMax() != null ? note.getNoteMax() : 20.0;
+            String contenu = String.format(java.util.Locale.FRANCE, "%s a obtenu %s/%s en %s (%s).%s",
+                    nomEleve, formatNote(note.getValeur()), formatNote(max), matiere, type,
+                    note.getAppreciation() != null && !note.getAppreciation().isBlank() ? " Appréciation : " + note.getAppreciation() : "");
+            notificationService.notifierParentsEleve(eleve, "Nouvelle note", contenu, expediteurId);
+        } catch (Exception e) {
+            // une note déjà enregistrée ne doit jamais échouer à cause de la notification
+        }
+    }
+
+    private static String formatNote(double v) {
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.format(java.util.Locale.FRANCE, "%.2f", v);
     }
 
     private Integer niveauDe(ClasseMatiere cm) {

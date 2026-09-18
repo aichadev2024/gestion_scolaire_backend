@@ -36,6 +36,9 @@ public class BulletinServiceImpl implements BulletinService {
     private EleveRepository eleveRepository;
 
     @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.NotificationService notificationService;
+
+    @Autowired
     private ClasseMatiereRepository classeMatiereRepository;
 
     @Autowired
@@ -192,6 +195,24 @@ public class BulletinServiceImpl implements BulletinService {
 
         bulletin.setEstVerrouille(true);
         bulletin = bulletinRepository.save(bulletin);
+
+        try {
+            Long expediteurId = null;
+            try {
+                expediteurId = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUserId();
+            } catch (Exception ignored) {
+                // pas de contexte d'authentification
+            }
+            Eleve eleve = bulletin.getEleve();
+            String nomEleve = eleve.getProfil() != null
+                    ? (eleve.getProfil().getPrenom() + " " + eleve.getProfil().getNom()).trim() : "Votre enfant";
+            String periode = bulletin.getPeriode() != null ? bulletin.getPeriode().toLowerCase().replace('_', ' ') : "";
+            notificationService.notifierParentsEleve(eleve, "Bulletin disponible",
+                    "Le bulletin (" + periode + ", " + bulletin.getAnneeScolaire() + ") de " + nomEleve
+                            + " est disponible. Consultez-le dans l'application.", expediteurId);
+        } catch (Exception e) {
+            // le verrouillage est déjà fait : la notification est un bonus
+        }
 
         return getBulletinDetails(bulletin.getEleve().getId(), bulletin.getPeriode(), bulletin.getAnneeScolaire());
     }
