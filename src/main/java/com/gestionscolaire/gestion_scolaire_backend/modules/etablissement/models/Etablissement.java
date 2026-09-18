@@ -71,6 +71,19 @@ public class Etablissement {
     @UpdateTimestamp
     @Column(name = "date_modification", nullable = false)
     private LocalDateTime dateModification;
+
+    /** Niveaux que cet établissement propose (ex. Lycée Général + Enseignement Professionnel).
+     * Liste vide = aucune restriction (comportement historique) : n'importe quel niveau global
+     * peut être utilisé pour créer une classe. Une liste non vide restreint la création de classes
+     * à ces niveaux uniquement (voir ClasseServiceImpl). */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "etablissement_niveaux",
+            joinColumns = @JoinColumn(name = "etablissement_id"),
+            inverseJoinColumns = @JoinColumn(name = "niveau_id")
+    )
+    @Builder.Default
+    private java.util.List<com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau> niveauxAutorises = new java.util.ArrayList<>();
 }
 
 

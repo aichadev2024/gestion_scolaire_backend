@@ -40,6 +40,9 @@ public class ClasseServiceImpl implements ClasseService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.repositories.EtablissementRepository etablissementRepository;
+
     /**
      * Un compte ENSEIGNANT ne doit voir que les classes où il enseigne réellement (professeur
      * principal OU au moins une matière assignée) — pas tout l'établissement/niveau. Les autres
@@ -69,21 +72,39 @@ public class ClasseServiceImpl implements ClasseService {
         return classes.stream().filter(c -> mesClasseIds.contains(c.getId())).toList();
     }
 
+    /** Si l'établissement a une liste de niveaux autorisés (non vide), le niveau choisi doit en
+     * faire partie — sinon aucune restriction (comportement historique). */
+    private void verifierNiveauAutorisePourEtablissement(Etablissement etablissement, Integer niveauId) {
+        if (etablissement == null) return;
+        List<Niveau> autorises = etablissement.getNiveauxAutorises();
+        if (autorises == null || autorises.isEmpty()) return;
+        boolean autorise = autorises.stream().anyMatch(n -> n.getId().equals(niveauId));
+        if (!autorise) {
+            throw new com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException(
+                    "Ce niveau n'est pas proposé par cet établissement.");
+        }
+    }
+
     @Override
     public Classe creerClasse(Classe classe, Integer niveauId, Long enseignantPrincipalId) {
         if (!tenantGuard.correspondAuNiveauCourant(niveauId)) {
             throw new com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException(
                     "Vous ne pouvez créer que des classes de votre propre niveau.");
         }
-        Niveau niveau = niveauRepository.findById(niveauId)
-                .orElseThrow(() -> new ResourceNotFoundException("Niveau introuvable"));
-        classe.setNiveau(niveau);
 
         if (classe.getEtablissement() == null) {
             try {
                 classe.setEtablissement(com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur().getEtablissement());
             } catch (Exception ignored) {}
         }
+        if (classe.getEtablissement() != null) {
+            Etablissement etablissement = etablissementRepository.findById(classe.getEtablissement().getId()).orElse(null);
+            verifierNiveauAutorisePourEtablissement(etablissement, niveauId);
+        }
+
+        Niveau niveau = niveauRepository.findById(niveauId)
+                .orElseThrow(() -> new ResourceNotFoundException("Niveau introuvable"));
+        classe.setNiveau(niveau);
 
         if (enseignantPrincipalId != null) {
             Enseignant principal = tenantGuard.requireSameTenant(enseignantRepository.findById(enseignantPrincipalId)
@@ -109,6 +130,7 @@ public class ClasseServiceImpl implements ClasseService {
                 throw new com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException(
                         "Vous ne pouvez déplacer cette classe que vers votre propre niveau.");
             }
+            verifierNiveauAutorisePourEtablissement(classe.getEtablissement(), niveauId);
             Niveau niveau = niveauRepository.findById(niveauId)
                     .orElseThrow(() -> new ResourceNotFoundException("Niveau introuvable"));
             classe.setNiveau(niveau);

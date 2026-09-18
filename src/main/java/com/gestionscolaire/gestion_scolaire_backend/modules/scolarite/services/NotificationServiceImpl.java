@@ -1,11 +1,15 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
+import com.gestionscolaire.gestion_scolaire_backend.core.services.PushNotificationService;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Notification;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisateur;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.NotificationRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.NotificationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,15 +20,20 @@ import java.util.Optional;
 @Transactional
 public class NotificationServiceImpl implements NotificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(NotificationServiceImpl.class);
+
     private final NotificationRepository notificationRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+    private final ObjectProvider<PushNotificationService> pushNotificationServiceProvider;
 
     public NotificationServiceImpl(NotificationRepository notificationRepository, UtilisateurRepository utilisateurRepository,
-                                   com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard) {
+                                   com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard,
+                                   ObjectProvider<PushNotificationService> pushNotificationServiceProvider) {
         this.notificationRepository = notificationRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.tenantGuard = tenantGuard;
+        this.pushNotificationServiceProvider = pushNotificationServiceProvider;
     }
 
     @Override
@@ -41,7 +50,21 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setDestinataire(destinataire);
         notification.setEtablissement(destinataire.getEtablissement());
         notification.setEstLu(false);
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+
+        // Envoi push best-effort : un échec ici ne doit jamais faire échouer la notification
+        // elle-même (déjà persistée et lisible via l'appli) — même philosophie que les try/catch
+        // existants autour des envois d'e-mail dans EtablissementServiceImpl.
+        try {
+            PushNotificationService push = pushNotificationServiceProvider.getIfAvailable();
+            if (push != null) {
+                push.envoyerPush(destinataire.getId(), saved.getTitre(), saved.getContenu());
+            }
+        } catch (Exception e) {
+            log.warn("Envoi push non effectué pour la notification {} : {}", saved.getId(), e.getMessage());
+        }
+
+        return saved;
     }
 
     @Override

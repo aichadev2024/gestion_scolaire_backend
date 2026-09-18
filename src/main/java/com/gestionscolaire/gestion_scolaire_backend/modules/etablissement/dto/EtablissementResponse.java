@@ -28,6 +28,10 @@ public class EtablissementResponse {
     private String adminUsername;
     private String adminNomComplet;
     private String adminEmail;
+
+    /** Niveaux proposés par cet établissement — liste vide = aucune restriction. */
+    private java.util.List<Integer> niveauIds;
+    private java.util.List<String> niveauNoms;
 }
 
 

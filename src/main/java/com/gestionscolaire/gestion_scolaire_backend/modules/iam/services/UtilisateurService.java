@@ -16,6 +16,12 @@ public interface UtilisateurService {
     void supprimerUtilisateur(Long id);
     /** Nomme cet utilisateur DIRECTEUR du niveau donné ; l'ancien titulaire de CE niveau (s'il y en a un) redevient Secrétaire. */
     Utilisateur nommerDirecteur(Long id, Integer niveauId);
+
+    /** Enregistre (ou réutilise) le token FCM de l'appareil/navigateur courant pour cet utilisateur. */
+    void enregistrerDeviceToken(Long utilisateurId, String token, String plateforme);
+
+    /** Retire un token FCM (ex. à la déconnexion) — n'échoue pas si le token n'existe pas. */
+    void supprimerDeviceToken(String token);
 }
 
 

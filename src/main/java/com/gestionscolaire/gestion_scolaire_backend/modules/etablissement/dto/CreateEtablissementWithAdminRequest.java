@@ -31,4 +31,8 @@ public class CreateEtablissementWithAdminRequest {
     @NotEmpty(message = "Au moins un directeur est obligatoire")
     @Valid
     private List<DirecteurCreationDto> directeurs;
+
+    /** Niveaux que cet établissement propose (ex. Lycée Général + Enseignement Professionnel) —
+     * null/vide = aucune restriction (n'importe quel niveau global peut être utilisé). */
+    private List<Integer> niveauIds;
 }

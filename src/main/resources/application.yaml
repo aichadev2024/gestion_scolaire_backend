@@ -63,6 +63,16 @@ storage:
     # URL publique de lecture du bucket (r2.dev ou domaine perso), sans slash final.
     public-base-url: ${R2_PUBLIC_BASE_URL:}
 
+# Notifications push (Firebase Cloud Messaging).
+# Si push.fcm.enabled=false : les notifications restent en base (lues par pull-to-refresh),
+# aucun envoi push n'est tenté — l'app démarre normalement sans compte Firebase configuré.
+push:
+  fcm:
+    enabled: ${FCM_ENABLED:false}
+    # JSON du compte de service Firebase, encodé en base64 (un JSON multi-lignes avec clé
+    # privée PEM ne survit pas fiablement à une variable d'environnement brute).
+    service-account-b64: ${FIREBASE_SERVICE_ACCOUNT_B64:}
+
 # Configuration du port de l'application backend
 server:
   port: ${PORT:8089}

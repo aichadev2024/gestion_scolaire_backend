@@ -1,5 +1,6 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.iam.controllers;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.dto.DeviceTokenRequest;
 import com.gestionscolaire.gestion_scolaire_backend.core.dto.DtoMapper;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException;
 import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard;
@@ -113,6 +114,24 @@ public class UtilisateurController {
         Utilisateur updated = utilisateurService.nommerDirecteur(id, niveauId);
         Profil updatedProfil = profilRepository.findByUtilisateurId(updated.getId()).orElse(null);
         return ResponseEntity.ok(dtoMapper.toUtilisateurResponse(updated, updatedProfil));
+    }
+
+    /** Enregistre le token FCM de l'appareil/navigateur courant — appelé après connexion (et à
+     * chaque ouverture d'app/onglet) par le client mobile/web, pour recevoir les notifications push. */
+    @PostMapping("/device-token")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> enregistrerDeviceToken(@Valid @RequestBody DeviceTokenRequest request) {
+        Long utilisateurId = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUserId();
+        utilisateurService.enregistrerDeviceToken(utilisateurId, request.getToken(), request.getPlateforme());
+        return ResponseEntity.ok(Map.of("message", "Token enregistré"));
+    }
+
+    /** Retire un token FCM (ex. à la déconnexion) — n'échoue pas si le token n'existe déjà plus. */
+    @DeleteMapping("/device-token")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> supprimerDeviceToken(@RequestBody Map<String, String> body) {
+        utilisateurService.supprimerDeviceToken(body.get("token"));
+        return ResponseEntity.ok(Map.of("message", "Token retiré"));
     }
 }
 

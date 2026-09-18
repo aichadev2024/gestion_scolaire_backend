@@ -58,6 +58,9 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.NiveauRepository niveauRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.DeviceTokenRepository deviceTokenRepository;
+
     // @Lazy : EleveService/EnseignantService dépendent de UtilisateurService → on casse le cycle.
     @Autowired
     @Lazy
@@ -368,6 +371,28 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         nouveauDirecteur.setRole(roleDirecteur);
         nouveauDirecteur.setNiveauSupervise(niveau);
         return utilisateurRepository.save(nouveauDirecteur);
+    }
+
+    @Override
+    public void enregistrerDeviceToken(Long utilisateurId, String token, String plateforme) {
+        Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
+        // Le même token peut être re-posté (ex. à chaque ouverture d'app) — on met juste à jour
+        // la plateforme et la date d'utilisation au lieu de créer un doublon (contrainte unique
+        // sur la colonne token).
+        com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.DeviceToken deviceToken =
+                deviceTokenRepository.findByToken(token)
+                        .orElse(com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.DeviceToken.builder()
+                                .token(token)
+                                .build());
+        deviceToken.setUtilisateur(utilisateur);
+        deviceToken.setPlateforme(plateforme);
+        deviceTokenRepository.save(deviceToken);
+    }
+
+    @Override
+    public void supprimerDeviceToken(String token) {
+        deviceTokenRepository.deleteByToken(token);
     }
 }
 

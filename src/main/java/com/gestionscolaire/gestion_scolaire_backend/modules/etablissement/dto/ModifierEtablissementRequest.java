@@ -16,4 +16,9 @@ public class ModifierEtablissementRequest {
     private String devise;
     /** Slogan de l'école, ex. « Travail - Rigueur - Réussite ». */
     private String slogan;
+
+    /** Niveaux que cet établissement propose. Sémantique volontairement distincte de "vide" :
+     * champ absent (null) = ne pas toucher aux niveaux actuels ; liste vide [] explicite = supprimer
+     * toute restriction ; liste non vide = remplace intégralement les niveaux autorisés. */
+    private java.util.List<Integer> niveauIds;
 }

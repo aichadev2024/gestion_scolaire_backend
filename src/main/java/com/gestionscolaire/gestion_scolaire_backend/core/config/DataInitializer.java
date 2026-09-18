@@ -17,7 +17,7 @@ public class DataInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private static final List<String> ROLES = List.of(
-            "SUPER_ADMIN", "DIRECTEUR", "SECRETAIRE", "COMPTABLE", "ENSEIGNANT", "ELEVE", "PARENT", "PROMOTEUR"
+            "SUPER_ADMIN", "DIRECTEUR", "SECRETAIRE", "COMPTABLE", "ENSEIGNANT", "ELEVE", "PARENT", "PROMOTEUR", "SURVEILLANT_GENERAL"
     );
 
     private static final List<String> NIVEAUX = List.of(

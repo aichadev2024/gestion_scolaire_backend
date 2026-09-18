@@ -108,6 +108,10 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .typeEtablissement(typeFinal)
                 .build();
 
+        if (request.getNiveauIds() != null && !request.getNiveauIds().isEmpty()) {
+            etablissement.setNiveauxAutorises(niveauRepository.findAllById(request.getNiveauIds()));
+        }
+
         Etablissement savedEtablissement = etablissementRepository.save(etablissement);
 
         // Créer chaque compte DIRECTEUR demandé. La plupart des écoles n'en ont qu'un (accès à
@@ -198,6 +202,12 @@ public class EtablissementServiceImpl implements EtablissementService {
         if (request.getSlogan() != null) {
             etablissement.setSlogan(request.getSlogan().isBlank() ? null : request.getSlogan().trim());
         }
+        // null = ne pas toucher aux niveaux actuels ; [] explicite = supprimer toute restriction ;
+        // liste non vide = remplace intégralement (voir doc du champ dans ModifierEtablissementRequest).
+        if (request.getNiveauIds() != null) {
+            etablissement.setNiveauxAutorises(
+                    request.getNiveauIds().isEmpty() ? new java.util.ArrayList<>() : niveauRepository.findAllById(request.getNiveauIds()));
+        }
         Etablissement updated = etablissementRepository.save(etablissement);
         return mapToResponse(updated);
     }
@@ -276,6 +286,10 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .adminUsername(adminUsername)
                 .adminNomComplet(adminNomComplet)
                 .adminEmail(adminEmail)
+                .niveauIds(etablissement.getNiveauxAutorises().stream()
+                        .map(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau::getId).toList())
+                .niveauNoms(etablissement.getNiveauxAutorises().stream()
+                        .map(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau::getNom).toList())
                 .build();
     }
 }
