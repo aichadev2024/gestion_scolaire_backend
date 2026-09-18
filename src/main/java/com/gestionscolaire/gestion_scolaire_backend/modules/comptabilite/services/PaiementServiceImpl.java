@@ -13,6 +13,8 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositori
 import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.repositories.*;
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.repositories.*;
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.services.PaiementService;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.NotificationService;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.RecuPdfService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,17 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private RecuPdfService recuPdfService;
+
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService emailService;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PaiementServiceImpl.class);
 
     private Integer niveauDe(Eleve e) {
         return (e.getClasse() != null && e.getClasse().getNiveau() != null) ? e.getClasse().getNiveau().getId() : null;
@@ -67,7 +80,92 @@ public class PaiementServiceImpl implements PaiementService {
         paiement.setEleve(eleve);
         paiement.setEtablissement(eleve.getEtablissement());
 
-        return paiementRepository.save(paiement);
+        Paiement saved = paiementRepository.save(paiement);
+        envoyerRecuAuxParents(saved, userReceptionnaireId);
+        return saved;
+    }
+
+    /**
+     * Remet le reçu aux parents dès l'enregistrement du paiement : notification (push sur l'appli
+     * mobile) et e-mail avec le PDF en pièce jointe. Ne fait jamais échouer le paiement.
+     */
+    private void envoyerRecuAuxParents(Paiement paiement, Long expediteurId) {
+        try {
+            Eleve eleve = paiement.getEleve();
+            List<Parent> parents = java.util.stream.Stream.of(eleve.getParent(), eleve.getParentSecondaire())
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            if (parents.isEmpty()) {
+                return;
+            }
+
+            String devise = "FCFA";
+            String etablissementNom = "Votre établissement";
+            if (eleve.getEtablissement() != null) {
+                etablissementNom = eleve.getEtablissement().getNom();
+                String d = eleve.getEtablissement().getDevise();
+                if (d != null && !d.isBlank()) devise = d;
+            }
+            java.text.DecimalFormatSymbols symbols = new java.text.DecimalFormatSymbols(java.util.Locale.FRANCE);
+            symbols.setGroupingSeparator(' ');
+            String montant = new java.text.DecimalFormat("#,##0.##", symbols).format(paiement.getMontantPaye()) + " " + devise;
+            String nomEleve = eleve.getProfil() != null
+                    ? (eleve.getProfil().getPrenom() + " " + eleve.getProfil().getNom()).trim()
+                    : "votre enfant";
+            String numeroRecu = paiement.getNumeroRecu();
+
+            java.util.Set<String> emails = new java.util.LinkedHashSet<>();
+            for (Parent parent : parents) {
+                if (parent.getProfil() == null) continue;
+                Utilisateur compte = parent.getProfil().getUtilisateur();
+                if (compte != null) {
+                    try {
+                        notificationService.envoyerNotification(
+                                Notification.builder()
+                                        .titre("Paiement reçu")
+                                        .contenu(String.format("Paiement de %s enregistré pour %s. Reçu N° %s (envoyé par e-mail si une adresse est renseignée).",
+                                                montant, nomEleve, numeroRecu))
+                                        .build(),
+                                expediteurId, compte.getId());
+                    } catch (Exception e) {
+                        log.warn("Notification de paiement non envoyée au parent {} : {}", parent.getId(), e.getMessage());
+                    }
+                }
+                String email = parent.getProfil().getEmail();
+                if ((email == null || email.isBlank()) && compte != null) email = compte.getEmail();
+                if (email != null && !email.isBlank()) emails.add(email.trim());
+            }
+            if (emails.isEmpty()) {
+                return;
+            }
+
+            byte[] pdf = recuPdfService.genererRecuPdf(numeroRecu);
+            String nomEtab = etablissementNom;
+            Runnable envoi = () -> {
+                for (String email : emails) {
+                    try {
+                        emailService.sendRecuPaiementEmail(email, nomEtab, nomEleve, numeroRecu, montant, pdf);
+                    } catch (Exception e) {
+                        log.warn("Reçu {} non envoyé à {} : {}", numeroRecu, email, e.getMessage());
+                    }
+                }
+            };
+            // Envoi après validation de la transaction (jamais de reçu pour un paiement annulé) et hors du
+            // fil de la requête pour ne pas ralentir la saisie du comptable.
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                        new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                java.util.concurrent.CompletableFuture.runAsync(envoi);
+                            }
+                        });
+            } else {
+                java.util.concurrent.CompletableFuture.runAsync(envoi);
+            }
+        } catch (Exception e) {
+            log.warn("Remise du reçu {} aux parents impossible : {}", paiement.getNumeroRecu(), e.getMessage());
+        }
     }
 
     @Override

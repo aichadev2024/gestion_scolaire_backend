@@ -172,6 +172,44 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendRecuPaiementEmail(String destinataire, String etablissementNom, String nomEleve, String numeroRecu, String montantFormate, byte[] pdfBytes) {
+        if (destinataire == null || destinataire.isBlank()) {
+            return;
+        }
+        String subject = "Reçu de paiement — " + nomEleve + " (" + etablissementNom + ")";
+        String htmlBody = """
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 560px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
+                <div style="text-align: center; padding-bottom: 15px; border-bottom: 2px solid #1B365D;">
+                    <h3 style="color: #1B365D; margin: 0;">%s</h3>
+                    <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Reçu de paiement</p>
+                </div>
+                <div style="padding: 20px 0;">
+                    <p style="font-size: 15px; color: #333333;">Bonjour,</p>
+                    <p style="font-size: 15px; color: #555555; line-height: 1.6;">
+                        Nous avons bien reçu un paiement de <strong>%s</strong> pour <strong>%s</strong>.
+                    </p>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 5px 0;"><strong>N° de reçu :</strong> %s</p>
+                    </div>
+                    <p style="font-size: 14px; color: #64748b;">
+                        Votre reçu officiel est joint à cet e-mail au format PDF. Conservez-le précieusement ; le QR code qu'il contient permet d'en vérifier l'authenticité.
+                    </p>
+                </div>
+                <div style="text-align: center; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #94a3b8;">
+                    Envoyé via Netaa École
+                </div>
+            </div>
+            """.formatted(escapeHtml(etablissementNom), escapeHtml(montantFormate), escapeHtml(nomEleve), escapeHtml(numeroRecu));
+
+        logger.info("🧾 [REÇU] Envoi du reçu {} à [{}]", numeroRecu, destinataire);
+        sendMailInternalWithAttachment(destinataire, subject, htmlBody, pdfBytes, "Recu_" + numeroRecu + ".pdf");
+    }
+
+    private static String escapeHtml(String value) {
+        return value == null ? "" : value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    @Override
     public void sendEtablissementCreatedWithPdf(com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etab, String destinataire, byte[] pdfBytes) {
         String recipient = (destinataire != null && !destinataire.isBlank())
                 ? destinataire
