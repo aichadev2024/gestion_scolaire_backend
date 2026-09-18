@@ -30,8 +30,10 @@ public class PaiementController {
         this.recuPdfService = recuPdfService;
     }
 
+    // Un parent ne peut pas créer de paiement lui-même : seul un paiement réellement encaissé par
+    // la comptabilité (ou confirmé par un futur opérateur Mobile Money) doit produire un reçu.
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE')")
     public ResponseEntity<Paiement> enregistrer(@Valid @RequestBody PaiementRequest request) {
         Paiement paiement = Paiement.builder()
                 .montantPaye(request.getMontantPaye())
@@ -47,6 +49,13 @@ public class PaiementController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE', 'PARENT')")
     public ResponseEntity<List<Paiement>> listerParEleve(@PathVariable Long eleveId) {
         return ResponseEntity.ok(paiementService.listerPaiementsEleve(eleveId));
+    }
+
+    /** Frais dus/payés par type (inscription, mensualités…) et historique des reçus, pour l'écran Finances du parent. */
+    @GetMapping("/eleve/{eleveId}/situation")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE', 'PARENT', 'ELEVE')")
+    public ResponseEntity<com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse> situation(@PathVariable Long eleveId) {
+        return ResponseEntity.ok(paiementService.situationEleve(eleveId));
     }
 
     @GetMapping("/eleve/{eleveId}/solde")

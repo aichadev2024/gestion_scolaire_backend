@@ -181,6 +181,110 @@ public class PaiementServiceImpl implements PaiementService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse situationEleve(Long eleveId) {
+        Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        verifierAccesFamille(eleve);
+
+        String devise = "FCFA";
+        if (eleve.getEtablissement() != null && eleve.getEtablissement().getDevise() != null
+                && !eleve.getEtablissement().getDevise().isBlank()) {
+            devise = eleve.getEtablissement().getDevise();
+        }
+
+        List<Paiement> paiements = new java.util.ArrayList<>(paiementRepository.findByEleveId(eleveId));
+        paiements.sort(java.util.Comparator.comparing(Paiement::getDatePaiement).reversed());
+
+        List<FraisScolarite> frais = eleve.getClasse() == null ? new java.util.ArrayList<>()
+                : new java.util.ArrayList<>(fraisScolariteRepository.findByClasseId(eleve.getClasse().getId()));
+        frais.sort(java.util.Comparator.comparing(FraisScolarite::getDateEcheance));
+
+        // Paiements rattachés à un frais précis ; le crédit libre (sans frais) couvre les échéances les plus anciennes.
+        java.util.Map<Long, Double> payeParFrais = new java.util.HashMap<>();
+        double libre = 0;
+        for (Paiement p : paiements) {
+            double m = p.getMontantPaye() != null ? p.getMontantPaye() : 0;
+            if (p.getFraisScolarite() != null) payeParFrais.merge(p.getFraisScolarite().getId(), m, Double::sum);
+            else libre += m;
+        }
+
+        java.time.LocalDate aujourdhui = java.time.LocalDate.now();
+        List<com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse.LigneFrais> lignes = new java.util.ArrayList<>();
+        double totalDu = 0;
+        double totalPaye = 0;
+        for (FraisScolarite f : frais) {
+            double paye = payeParFrais.getOrDefault(f.getId(), 0.0);
+            double manque = Math.max(0, f.getMontant() - paye);
+            double applique = Math.min(libre, manque);
+            paye += applique;
+            libre -= applique;
+            double reste = Math.max(0, f.getMontant() - paye);
+            String statut = reste <= 0 ? "PAYE"
+                    : f.getDateEcheance().isBefore(aujourdhui) ? "EN_RETARD"
+                    : paye > 0 ? "PARTIEL" : "A_PAYER";
+            double payeRetenu = Math.min(paye, f.getMontant());
+            totalDu += f.getMontant();
+            totalPaye += payeRetenu;
+            lignes.add(new com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse.LigneFrais(
+                    f.getId(), f.getTitre(), typeDeFrais(f.getTitre()), f.getMontant(), payeRetenu,
+                    reste, f.getDateEcheance(), statut));
+        }
+
+        List<com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse.PaiementRecu> recus = paiements.stream()
+                .map(p -> new com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse.PaiementRecu(
+                        p.getId(), p.getNumeroRecu(), p.getMontantPaye() != null ? p.getMontantPaye() : 0,
+                        p.getDatePaiement(), p.getModePaiement(),
+                        p.getFraisScolarite() != null ? p.getFraisScolarite().getTitre() : "Paiement"))
+                .toList();
+
+        double reste = Math.max(0, totalDu - totalPaye);
+        return new com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse(
+                devise, totalDu, totalPaye, reste, frais.isEmpty(), !frais.isEmpty() && reste <= 0,
+                Math.max(0, libre), lignes, recus);
+    }
+
+    /** Un parent ne voit que ses enfants, un élève que lui-même ; direction et comptabilité voient tout l'établissement. */
+    private void verifierAccesFamille(Eleve eleve) {
+        Utilisateur courant;
+        try {
+            courant = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur();
+        } catch (Exception e) {
+            return;
+        }
+        String role = courant.getRole() != null ? courant.getRole().getNom() : "";
+        boolean concerne;
+        if ("PARENT".equalsIgnoreCase(role)) {
+            concerne = estCompteDe(eleve.getParent(), courant) || estCompteDe(eleve.getParentSecondaire(), courant);
+        } else if ("ELEVE".equalsIgnoreCase(role)) {
+            concerne = eleve.getProfil() != null && eleve.getProfil().getUtilisateur() != null
+                    && courant.getId().equals(eleve.getProfil().getUtilisateur().getId());
+        } else {
+            return;
+        }
+        if (!concerne) {
+            throw new ResourceNotFoundException("Élève introuvable");
+        }
+    }
+
+    private static boolean estCompteDe(Parent parent, Utilisateur courant) {
+        return parent != null && parent.getProfil() != null && parent.getProfil().getUtilisateur() != null
+                && courant.getId().equals(parent.getProfil().getUtilisateur().getId());
+    }
+
+    /** Classe un frais selon son intitulé : inscription, mensualité (ou nom de mois) ou autre. */
+    private static String typeDeFrais(String titre) {
+        String t = titre == null ? "" : java.text.Normalizer.normalize(titre, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toLowerCase();
+        if (t.contains("inscri")) return "INSCRIPTION";
+        if (t.contains("mensu") || t.contains("mois")
+                || t.matches(".*(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre).*")) {
+            return "MENSUALITE";
+        }
+        return "AUTRE";
+    }
+
+    @Override
     public Double calculerSoldeRestantEleve(Long eleveId) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));

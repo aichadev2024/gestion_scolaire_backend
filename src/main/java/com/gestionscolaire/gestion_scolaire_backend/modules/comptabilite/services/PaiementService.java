@@ -12,6 +12,9 @@ public interface PaiementService {
     Optional<Paiement> trouverParNumeroRecu(String numeroRecu);
     Double calculerSoldeRestantEleve(Long eleveId);
 
+    /** Frais dus, payés et reste pour un élève, plus l'historique des reçus (avec leur objet). */
+    com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse situationEleve(Long eleveId);
+
     /** Élèves dont au moins une échéance de frais est dépassée d'au moins 1 jour et non couverte. */
     List<RetardPaiementResponse> listerRetardsPaiement();
 }
