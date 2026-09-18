@@ -36,7 +36,7 @@ public class ClasseMatiereController {
     }
 
     @GetMapping("/classe/{classeId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE', 'SURVEILLANT_GENERAL', 'ENSEIGNANT', 'ELEVE', 'PARENT')")
     public ResponseEntity<List<ClasseMatiere>> listerParClasse(@PathVariable Long classeId) {
         return ResponseEntity.ok(classeMatiereService.listerParClasse(classeId));
     }
