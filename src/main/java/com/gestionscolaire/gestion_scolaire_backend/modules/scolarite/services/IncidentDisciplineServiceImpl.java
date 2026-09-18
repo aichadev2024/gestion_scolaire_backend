@@ -1,5 +1,6 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services;
 
+import com.gestionscolaire.gestion_scolaire_backend.core.dto.IncidentDisciplineResponse;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
 import com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils;
@@ -47,7 +48,7 @@ public class IncidentDisciplineServiceImpl implements IncidentDisciplineService 
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
     @Override
-    public IncidentDiscipline enregistrerIncident(IncidentDiscipline incident, Long eleveId, Long classeId, Long classeMatiereId) {
+    public IncidentDisciplineResponse enregistrerIncident(IncidentDiscipline incident, Long eleveId, Long classeId, Long classeMatiereId) {
         if (!STATUTS_VALIDES.contains(incident.getStatut())) {
             throw new BadRequestException("Statut d'incident invalide : " + incident.getStatut());
         }
@@ -84,7 +85,7 @@ public class IncidentDisciplineServiceImpl implements IncidentDisciplineService 
         // des parents » listé pour les 4 statuts).
         notifierParents(saved);
 
-        return saved;
+        return IncidentDisciplineResponse.de(saved);
     }
 
     /** Signale à chaque parent (principal + secondaire) l'incident disciplinaire enregistré. */
@@ -143,23 +144,25 @@ public class IncidentDisciplineServiceImpl implements IncidentDisciplineService 
     }
 
     @Override
-    public List<IncidentDiscipline> listerParEleve(Long eleveId) {
+    public List<IncidentDisciplineResponse> listerParEleve(Long eleveId) {
         return tenantGuard.filterSameNiveau(
-                tenantGuard.filterSameTenant(incidentDisciplineRepository.findByEleveIdOrderByDateDescHeureDesc(eleveId)), this::niveauDe);
+                tenantGuard.filterSameTenant(incidentDisciplineRepository.findByEleveIdOrderByDateDescHeureDesc(eleveId)), this::niveauDe)
+                .stream().map(IncidentDisciplineResponse::de).toList();
     }
 
     @Override
-    public List<IncidentDiscipline> listerParClasseEtDate(Long classeId, LocalDate date) {
+    public List<IncidentDisciplineResponse> listerParClasseEtDate(Long classeId, LocalDate date) {
         return tenantGuard.filterSameNiveau(
-                tenantGuard.filterSameTenant(incidentDisciplineRepository.findByClasseIdAndDate(classeId, date)), this::niveauDe);
+                tenantGuard.filterSameTenant(incidentDisciplineRepository.findByClasseIdAndDate(classeId, date)), this::niveauDe)
+                .stream().map(IncidentDisciplineResponse::de).toList();
     }
 
     @Override
-    public IncidentDiscipline marquerTraite(Long id, String notesTraitement) {
+    public IncidentDisciplineResponse marquerTraite(Long id, String notesTraitement) {
         IncidentDiscipline incident = tenantGuard.requireSameTenant(incidentDisciplineRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Incident introuvable")));
         incident.setEstTraite(true);
         incident.setNotesTraitement(notesTraitement);
-        return incidentDisciplineRepository.save(incident);
+        return IncidentDisciplineResponse.de(incidentDisciplineRepository.save(incident));
     }
 }
