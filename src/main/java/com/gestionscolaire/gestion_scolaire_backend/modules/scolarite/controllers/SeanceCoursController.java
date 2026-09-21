@@ -54,6 +54,17 @@ public class SeanceCoursController {
         return ResponseEntity.ok(seanceCoursService.lister(classeId, debut, fin));
     }
 
+    /** Cahier de texte et devoirs de la classe d'un élève, pour ses parents et pour lui. */
+    @GetMapping("/eleve/{eleveId}")
+    @PreAuthorize("hasAnyRole('PARENT', 'ELEVE', 'DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<List<SeanceCoursResponse>> pourEleve(
+            @PathVariable Long eleveId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin
+    ) {
+        return ResponseEntity.ok(seanceCoursService.listerPourEleve(eleveId, debut, fin));
+    }
+
     /** Les matières/classes de l'enseignant connecté (pour choisir où saisir sa séance). */
     @GetMapping("/mes-cours")
     @PreAuthorize("hasRole('ENSEIGNANT')")

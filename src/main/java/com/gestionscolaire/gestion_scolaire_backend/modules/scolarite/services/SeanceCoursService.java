@@ -37,6 +37,8 @@ public class SeanceCoursService {
     private final EmploiDuTempsRepository emploiDuTempsRepository;
     private final EnseignantRepository enseignantRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository eleveRepository;
+    private final NotificationService notificationService;
     private final TenantGuard tenantGuard;
 
     public SeanceCoursService(SeanceCoursRepository seanceRepository,
@@ -44,12 +46,16 @@ public class SeanceCoursService {
                               EmploiDuTempsRepository emploiDuTempsRepository,
                               EnseignantRepository enseignantRepository,
                               UtilisateurRepository utilisateurRepository,
+                              com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository eleveRepository,
+                              NotificationService notificationService,
                               TenantGuard tenantGuard) {
         this.seanceRepository = seanceRepository;
         this.classeMatiereRepository = classeMatiereRepository;
         this.emploiDuTempsRepository = emploiDuTempsRepository;
         this.enseignantRepository = enseignantRepository;
         this.utilisateurRepository = utilisateurRepository;
+        this.eleveRepository = eleveRepository;
+        this.notificationService = notificationService;
         this.tenantGuard = tenantGuard;
     }
 
@@ -121,7 +127,9 @@ public class SeanceCoursService {
         if (u != null) {
             utilisateurRepository.findById(u.getId()).ifPresent(s::setEnregistrePar);
         }
-        return SeanceCoursResponse.de(seanceRepository.save(s));
+        SeanceCours saved = seanceRepository.save(s);
+        notifierDevoirs(saved);
+        return SeanceCoursResponse.de(saved);
     }
 
     public SeanceCoursResponse modifier(Long id, SeanceCoursRequest request) {
@@ -150,6 +158,64 @@ public class SeanceCoursService {
                 .filter(s -> enseignantId == null || estMonCours(s.getClasseMatiere(), enseignantId))
                 .map(SeanceCoursResponse::de)
                 .toList();
+    }
+
+    /** Prévient les parents de la classe quand un enseignant donne des devoirs. */
+    private void notifierDevoirs(SeanceCours s) {
+        try {
+            if (!Boolean.TRUE.equals(s.getEffectue()) || s.getDevoirs() == null || s.getDevoirs().isBlank()) return;
+            ClasseMatiere cm = s.getClasseMatiere();
+            if (cm.getClasse() == null) return;
+            String matiere = cm.getMatiere() != null ? cm.getMatiere().getNom() : "une matière";
+            String devoirs = s.getDevoirs().length() > 220 ? s.getDevoirs().substring(0, 220) + "…" : s.getDevoirs();
+            String contenu = "Devoirs de " + matiere + " (séance du "
+                    + s.getDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ") : " + devoirs;
+            Utilisateur auteur = utilisateurCourant();
+            Long expediteurId = auteur != null ? auteur.getId() : null;
+            for (com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve e : eleveRepository.findByClasseId(cm.getClasse().getId())) {
+                if (e.getStatut() != null && !"ACTIF".equalsIgnoreCase(e.getStatut())) continue;
+                notificationService.notifierParentsEleve(e, "Nouveaux devoirs", contenu, expediteurId);
+            }
+        } catch (Exception ignored) {
+            // la séance est enregistrée : la notification est un bonus
+        }
+    }
+
+    /** Cahier de texte de la classe d'un élève, visible par ses parents et par lui-même (séances effectuées seulement). */
+    @Transactional(readOnly = true)
+    public List<SeanceCoursResponse> listerPourEleve(Long eleveId, LocalDate debut, LocalDate fin) {
+        com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve eleve = tenantGuard.requireSameTenant(
+                eleveRepository.findById(eleveId).orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        verifierAccesFamille(eleve);
+        if (eleve.getClasse() == null) return List.of();
+        return seanceRepository
+                .findByClasseMatiereClasseIdAndDateBetweenOrderByDateDescHeureDebutDesc(eleve.getClasse().getId(), debut, fin)
+                .stream()
+                .filter(x -> Boolean.TRUE.equals(x.getEffectue()))
+                .map(SeanceCoursResponse::de)
+                .toList();
+    }
+
+    /** Un parent ne voit que ses enfants, un élève que lui-même ; le personnel voit tout l'établissement. */
+    private void verifierAccesFamille(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve eleve) {
+        Utilisateur courant = utilisateurCourant();
+        if (courant == null || courant.getRole() == null) return;
+        String role = courant.getRole().getNom();
+        boolean concerne;
+        if ("PARENT".equalsIgnoreCase(role)) {
+            concerne = estCompteDe(eleve.getParent(), courant) || estCompteDe(eleve.getParentSecondaire(), courant);
+        } else if ("ELEVE".equalsIgnoreCase(role)) {
+            concerne = eleve.getProfil() != null && eleve.getProfil().getUtilisateur() != null
+                    && courant.getId().equals(eleve.getProfil().getUtilisateur().getId());
+        } else {
+            return;
+        }
+        if (!concerne) throw new ResourceNotFoundException("Élève introuvable");
+    }
+
+    private static boolean estCompteDe(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Parent parent, Utilisateur courant) {
+        return parent != null && parent.getProfil() != null && parent.getProfil().getUtilisateur() != null
+                && courant.getId().equals(parent.getProfil().getUtilisateur().getId());
     }
 
     @Transactional(readOnly = true)
