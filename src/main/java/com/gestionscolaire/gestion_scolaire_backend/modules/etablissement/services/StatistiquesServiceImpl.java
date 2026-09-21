@@ -80,11 +80,12 @@ public class StatistiquesServiceImpl implements StatistiquesService {
                                 .anyMatch(c -> tenantGuard.correspondAuNiveauCourant(c.getNiveau() != null ? c.getNiveau().getId() : null)))
                         .toList()
                 : enseignantRepository.findByEtablissementId(etabId);
-        List<Utilisateur> personnel = tenantGuard.niveauRestreint()
-                ? utilisateurRepository.findByEtablissementId(etabId).stream()
-                        .filter(u -> u.getNiveauSupervise() != null && tenantGuard.correspondAuNiveauCourant(u.getNiveauSupervise().getId()))
-                        .toList()
-                : utilisateurRepository.findByEtablissementId(etabId);
+        // Le personnel = les comptes de l'équipe ; les parents et les élèves ont aussi un compte mais n'en font pas partie.
+        List<Utilisateur> personnel = utilisateurRepository.findByEtablissementId(etabId).stream()
+                .filter(u -> u.getRole() != null && !List.of("PARENT", "ELEVE", "SUPER_ADMIN", "PROMOTEUR").contains(u.getRole().getNom()))
+                .filter(u -> !tenantGuard.niveauRestreint()
+                        || (u.getNiveauSupervise() != null && tenantGuard.correspondAuNiveauCourant(u.getNiveauSupervise().getId())))
+                .toList();
 
         int totalEleves = eleves.size();
         int totalEnseignants = enseignants.size();

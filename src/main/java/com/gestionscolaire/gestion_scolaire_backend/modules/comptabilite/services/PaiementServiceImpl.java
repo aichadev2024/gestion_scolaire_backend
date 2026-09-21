@@ -239,9 +239,12 @@ public class PaiementServiceImpl implements PaiementService {
                 .toList();
 
         double reste = Math.max(0, totalDu - totalPaye);
+        // Tant que l'école n'a enregistré que l'inscription, le reste de la scolarité (mensualités,
+        // tranches…) n'est pas connu : on ne peut donc pas déclarer l'année « toute payée ».
+        boolean scolariteDefinie = lignes.stream().anyMatch(l -> !"INSCRIPTION".equals(l.type()));
         return new com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse(
-                devise, totalDu, totalPaye, reste, frais.isEmpty(), !frais.isEmpty() && reste <= 0,
-                Math.max(0, libre), lignes, recus);
+                devise, totalDu, totalPaye, reste, frais.isEmpty(), scolariteDefinie && reste <= 0,
+                scolariteDefinie, Math.max(0, libre), lignes, recus);
     }
 
     /** Un parent ne voit que ses enfants, un élève que lui-même ; direction et comptabilité voient tout l'établissement. */

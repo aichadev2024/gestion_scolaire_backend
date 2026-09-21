@@ -15,6 +15,7 @@ public record SituationFinanciereResponse(
         double reste,
         boolean aucunFraisDefini,
         boolean toutPaye,
+        boolean scolariteDefinie,
         double creditNonUtilise,
         List<LigneFrais> lignes,
         List<PaiementRecu> paiements

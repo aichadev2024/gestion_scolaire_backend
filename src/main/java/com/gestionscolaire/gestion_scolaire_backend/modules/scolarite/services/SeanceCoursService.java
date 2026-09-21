@@ -12,6 +12,7 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Utilisate
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.ClasseMatiere;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.EmploiDuTemps;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Notification;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.SeanceCours;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseMatiereRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EmploiDuTempsRepository;
@@ -129,7 +130,47 @@ public class SeanceCoursService {
         }
         SeanceCours saved = seanceRepository.save(s);
         notifierDevoirs(saved);
+        notifierDirection(saved);
         return SeanceCoursResponse.de(saved);
+    }
+
+    /**
+     * Prévient les directeurs (du niveau concerné) qu'un enseignant n'a pas assuré un cours, avec le motif.
+     * Les séances effectuées ne notifient pas : elles restent consultables (cahier de texte, effectivité).
+     * Rien n'est envoyé quand la séance est saisie par la direction elle-même.
+     */
+    private void notifierDirection(SeanceCours s) {
+        try {
+            if (Boolean.TRUE.equals(s.getEffectue()) || enseignantCourantId() == null) return;
+            Long etablissementId = tenantGuard.etablissementId();
+            if (etablissementId == null) return;
+            ClasseMatiere cm = s.getClasseMatiere();
+            String classe = cm.getClasse() != null ? cm.getClasse().getNom() : "Classe";
+            String matiere = cm.getMatiere() != null ? cm.getMatiere().getNom() : "matière";
+            String enseignant = "Un enseignant";
+            if (cm.getEnseignant() != null && cm.getEnseignant().getProfil() != null) {
+                enseignant = (cm.getEnseignant().getProfil().getPrenom() + " " + cm.getEnseignant().getProfil().getNom()).trim();
+            }
+            String date = s.getDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            String titre = "Cours non effectué";
+            String contenu = enseignant + " — " + classe + ", " + matiere + " (" + date + ") : cours non effectué"
+                    + (s.getMotifNonEffectue() != null ? " (" + s.getMotifNonEffectue() + ")." : ".");
+            Utilisateur auteur = utilisateurCourant();
+            Long expediteurId = auteur != null ? auteur.getId() : null;
+            for (Utilisateur u : utilisateurRepository.findByEtablissementId(etablissementId)) {
+                if (u.getRole() == null || !"DIRECTEUR".equalsIgnoreCase(u.getRole().getNom())) continue;
+                if (u.getNiveauSupervise() != null && cm.getClasse() != null && cm.getClasse().getNiveau() != null
+                        && !u.getNiveauSupervise().getId().equals(cm.getClasse().getNiveau().getId())) continue;
+                try {
+                    notificationService.envoyerNotification(
+                            Notification.builder().titre(titre).contenu(contenu).build(), expediteurId, u.getId());
+                } catch (Exception ignored) {
+                    // un destinataire en échec ne bloque pas les autres
+                }
+            }
+        } catch (Exception ignored) {
+            // la séance est enregistrée : la notification est un bonus
+        }
     }
 
     public SeanceCoursResponse modifier(Long id, SeanceCoursRequest request) {
@@ -228,7 +269,8 @@ public class SeanceCoursService {
                 .map(cm -> new MonCoursResponse(cm.getId(),
                         cm.getClasse() != null ? cm.getClasse().getId() : null,
                         cm.getClasse() != null ? cm.getClasse().getNom() : null,
-                        cm.getMatiere() != null ? cm.getMatiere().getNom() : null))
+                        cm.getMatiere() != null ? cm.getMatiere().getNom() : null,
+                        cm.getClasse() != null && cm.getClasse().getNiveau() != null ? cm.getClasse().getNiveau().getNom() : null))
                 .sorted(Comparator.comparing(MonCoursResponse::classeNom, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
     }
