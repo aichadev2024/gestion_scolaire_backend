@@ -1,6 +1,7 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.controllers;
 
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.StatistiquesEtablissementResponse;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.StatistiquesFinancesResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.StatistiquesService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,5 +24,12 @@ public class StatistiquesController {
     @PreAuthorize("hasAnyRole('DIRECTEUR', 'PROMOTEUR')")
     public ResponseEntity<StatistiquesEtablissementResponse> obtenirStatistiques() {
         return ResponseEntity.ok(statistiquesService.obtenirPourEtablissementCourant());
+    }
+
+    /** Détail des finances : mois/année en cours, courbe des 12 derniers mois, chaque paiement (élève, frais). */
+    @GetMapping("/finances")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'PROMOTEUR')")
+    public ResponseEntity<StatistiquesFinancesResponse> obtenirFinances() {
+        return ResponseEntity.ok(statistiquesService.obtenirFinancesDetaillees());
     }
 }
