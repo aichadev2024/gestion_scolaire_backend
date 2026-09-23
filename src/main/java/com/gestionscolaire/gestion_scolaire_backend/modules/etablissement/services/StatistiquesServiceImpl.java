@@ -73,7 +73,12 @@ public class StatistiquesServiceImpl implements StatistiquesService {
         // niveau) ne voit QUE les chiffres de son niveau — jamais ceux de l'établissement entier.
         List<Classe> classes = tenantGuard.filterSameNiveau(classeRepository.findByEtablissementId(etabId),
                 c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
-        List<Eleve> eleves = tenantGuard.filterSameNiveau(eleveRepository.findByEtablissementId(etabId), this::niveauDe);
+        // Un élève archivé (parti, radié...) ne doit plus compter dans l'effectif ni dans les frais
+        // attendus — il ne sera plus facturé. Même filtre que listerRetardsPaiement().
+        List<Eleve> eleves = tenantGuard.filterSameNiveau(eleveRepository.findByEtablissementId(etabId), this::niveauDe)
+                .stream()
+                .filter(e -> "ACTIF".equalsIgnoreCase(e.getStatut()))
+                .toList();
         List<Enseignant> enseignants = tenantGuard.niveauRestreint()
                 ? enseignantRepository.findByEtablissementId(etabId).stream()
                         .filter(en -> classeRepository.findByEnseignantPrincipalId(en.getId()).stream()
@@ -100,7 +105,9 @@ public class StatistiquesServiceImpl implements StatistiquesService {
         for (FraisScolarite frais : fraisList) {
             if (frais.getClasse() == null) continue;
             Long classeId = frais.getClasse().getId();
-            int effectif = effectifParClasse.computeIfAbsent(classeId, id -> eleveRepository.findByClasseId(id).size());
+            int effectif = effectifParClasse.computeIfAbsent(classeId, id -> (int) eleveRepository.findByClasseId(id).stream()
+                    .filter(e -> "ACTIF".equalsIgnoreCase(e.getStatut()))
+                    .count());
             totalFraisAttendus += frais.getMontant() * effectif;
         }
 
