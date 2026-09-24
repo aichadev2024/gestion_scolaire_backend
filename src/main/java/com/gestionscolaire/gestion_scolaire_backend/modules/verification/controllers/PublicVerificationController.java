@@ -119,6 +119,8 @@ public class PublicVerificationController {
             m.put("type", "abonnement");
             m.put("nom", e.getNom());
             m.put("code", e.getCode());
+            m.put("slogan", e.getSlogan());
+            m.put("logoUrl", e.getLogoUrl());
             m.put("planTarifaire", e.getPlanTarifaire());
             m.put("statut", e.getStatut());
             m.put("dateExpirationAbonnement",
