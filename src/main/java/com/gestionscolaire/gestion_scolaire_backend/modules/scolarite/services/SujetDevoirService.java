@@ -23,7 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** Sujets de devoir/examen qu'un enseignant transmet à la direction avant de les donner aux élèves. */
@@ -35,6 +41,12 @@ public class SujetDevoirService {
     private static final Set<String> TYPES = Set.of("DEVOIR", "EXAMEN");
     private static final Set<String> STATUTS = Set.of("VALIDE", "REJETE");
     private static final long POIDS_MAX_OCTETS = 15L * 1024 * 1024;
+    private static final Map<String, String> EXTENSIONS = Map.of(
+            "application/pdf", "pdf", "image/jpeg", "jpg", "image/png", "png");
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
+
+    /** Bytes du fichier d'un sujet, pour le téléchargement/l'impression côté direction. */
+    public record FichierSujet(byte[] contenu, String contentType, String nomFichier) {}
 
     private final SujetDevoirRepository sujetRepository;
     private final ClasseMatiereRepository classeMatiereRepository;
@@ -204,6 +216,36 @@ public class SujetDevoirService {
             sujets = sujets.stream().filter(x -> x.getStatut().equalsIgnoreCase(s)).toList();
         }
         return sujets.stream().map(this::versDto).toList();
+    }
+
+    /**
+     * Récupère les octets du fichier pour le téléchargement/impression depuis le portail web —
+     * le bucket R2 ne renvoie pas d'en-têtes CORS, une simple balise {@code <a>} ne suffit donc
+     * pas à forcer un téléchargement fiable ; on relaie via le backend (déjà authentifié).
+     */
+    @Transactional(readOnly = true)
+    public FichierSujet recupererFichier(Long id) {
+        SujetDevoir sujet = tenantGuard.requireSameTenant(sujetRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Sujet introuvable")));
+        tenantGuard.requireSameNiveau(sujet.getClasseMatiere(), this::niveauDe);
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(sujet.getUrl()))
+                    .timeout(Duration.ofSeconds(10)).GET().build();
+            HttpResponse<byte[]> upstream = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (upstream.statusCode() != 200) {
+                throw new ResourceNotFoundException("Fichier introuvable sur le stockage.");
+            }
+            String extension = EXTENSIONS.getOrDefault(sujet.getContentType(), "bin");
+            String nomFichier = sujet.getTitre().replaceAll("[^a-zA-Z0-9\\-_ ]", "").trim().replace(' ', '-')
+                    + "." + extension;
+            return new FichierSujet(upstream.body(), sujet.getContentType(), nomFichier);
+        } catch (ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Relais du fichier échoué pour le sujet {} : {}", id, e.getMessage());
+            throw new BadRequestException("Le fichier est momentanément indisponible. Réessayez.");
+        }
     }
 
     @Transactional

@@ -2,6 +2,8 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.controlle
 
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.dto.SujetDevoirResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.SujetDevoirService;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,6 +45,17 @@ public class SujetDevoirController {
     @PreAuthorize("hasAnyRole('DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<List<SujetDevoirResponse>> lister(@RequestParam(required = false) String statut) {
         return ResponseEntity.ok(sujetDevoirService.lister(statut));
+    }
+
+    @GetMapping("/{id}/fichier")
+    @PreAuthorize("hasAnyRole('DIRECTEUR', 'SECRETAIRE')")
+    public ResponseEntity<byte[]> fichier(@PathVariable Long id) {
+        SujetDevoirService.FichierSujet f = sujetDevoirService.recupererFichier(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(f.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename(f.nomFichier()).build().toString())
+                .body(f.contenu());
     }
 
     @PatchMapping("/{id}/traiter")
