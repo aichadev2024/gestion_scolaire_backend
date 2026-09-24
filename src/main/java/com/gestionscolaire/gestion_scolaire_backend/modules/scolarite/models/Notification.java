@@ -47,6 +47,13 @@ public class Notification implements TenantScoped {
     @CreationTimestamp
     @Column(name = "date_creation", nullable = false, updatable = false)
     private LocalDateTime dateCreation;
+
+    /** Réponse du destinataire (justification d'absence, ou tout autre message) — facultative. */
+    @Column(name = "reponse_contenu", columnDefinition = "TEXT")
+    private String reponseContenu;
+
+    @Column(name = "reponse_date")
+    private LocalDateTime reponseDate;
 }
 
 

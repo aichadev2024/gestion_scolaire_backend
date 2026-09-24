@@ -61,6 +61,28 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.trouverParId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification introuvable")));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> supprimer(@PathVariable Long id) {
+        notificationService.supprimer(id);
+        return ResponseEntity.ok(Map.of("message", "Notification supprimée"));
+    }
+
+    /** Nettoyage en une fois — utile quand il y en a beaucoup accumulées. */
+    @DeleteMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> supprimerToutes() {
+        notificationService.supprimerToutes();
+        return ResponseEntity.ok(Map.of("message", "Notifications supprimées"));
+    }
+
+    /** Réponse du destinataire — justification d'absence ou tout autre message. */
+    @PatchMapping("/{id}/repondre")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Notification> repondre(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(notificationService.repondre(id, body.get("contenu")));
+    }
 }
 
 
