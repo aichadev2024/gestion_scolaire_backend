@@ -32,7 +32,7 @@ public class SecurityConfig {
     private final CustomUserDetailsService userDetailsService;
 
     /** Origines autorisées pour le CORS (liste séparée par des virgules). Voir application.yaml / CORS_ALLOWED_ORIGINS. */
-    @Value("${app.cors.allowed-origins:http://localhost:3000,https://gestion-scolaire-admin.vercel.app}")
+    @Value("${app.cors.allowed-origins:http://localhost:3000,https://gestion-scolaire-admin.vercel.app,https://netaa-ecole.com,https://www.netaa-ecole.com}")
     private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, CustomUserDetailsService userDetailsService) {
