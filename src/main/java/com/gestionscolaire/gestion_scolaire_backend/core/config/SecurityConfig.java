@@ -31,8 +31,13 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
 
-    /** Origines autorisées pour le CORS (liste séparée par des virgules). Voir application.yaml / CORS_ALLOWED_ORIGINS. */
-    @Value("${app.cors.allowed-origins:http://localhost:3000,https://gestion-scolaire-admin.vercel.app,https://netaa-ecole.com,https://www.netaa-ecole.com}")
+    /**
+     * Motifs d'origines autorisées pour le CORS (liste séparée par des virgules, "*" autorisé).
+     * Voir application.yaml / CORS_ALLOWED_ORIGINS. Le wildcard https://*.netaa-ecole.com couvre
+     * tout sous-domaine d'établissement (lbfc.netaa-ecole.com, etc.) sans devoir modifier cette
+     * variable à chaque nouvelle école — seul le DNS/Vercel change par établissement.
+     */
+    @Value("${app.cors.allowed-origins:http://localhost:3000,https://gestion-scolaire-admin.vercel.app,https://netaa-ecole.com,https://*.netaa-ecole.com}")
     private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, CustomUserDetailsService userDetailsService) {
@@ -60,7 +65,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(
+        // setAllowedOriginPatterns (pas setAllowedOrigins) : seule la variante "patterns" accepte
+        // un wildcard ("*.netaa-ecole.com") tout en restant compatible avec allowCredentials(true).
+        configuration.setAllowedOriginPatterns(
                 Arrays.stream(allowedOrigins.split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
