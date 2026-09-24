@@ -49,6 +49,7 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
             creneau.setEtablissement(c.getEtablissement());
         }
         validerCreneau(creneau);
+        detecterConflits(creneau, null);
         return emploiDuTempsRepository.save(creneau);
     }
 
@@ -76,6 +77,7 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
             creneau.setClasse(c);
         }
 
+        detecterConflits(creneau, id);
         return emploiDuTempsRepository.save(creneau);
     }
 
@@ -99,6 +101,51 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
         EmploiDuTemps creneau = tenantGuard.requireSameTenant(emploiDuTempsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Créneau introuvable")));
         emploiDuTempsRepository.delete(creneau);
+    }
+
+    /**
+     * Refuse un créneau qui chevauche, le même jour, un créneau existant du même enseignant
+     * ou de la même salle — aucune vérification de ce type n'existait jusqu'ici malgré ce
+     * qu'indiquait la documentation. Ne bloque que sur COURS (une pause n'a pas d'enseignant,
+     * et deux classes peuvent partager la même salle pour une pause/récréation sans problème).
+     */
+    private void detecterConflits(EmploiDuTemps creneau, Long idAExclure) {
+        if (!"COURS".equals(creneau.getTypeCreneau())) return;
+
+        Long etablissementId = creneau.getEtablissement() != null ? creneau.getEtablissement().getId() : null;
+        if (etablissementId == null) return;
+
+        Long enseignantId = creneau.getClasseMatiere() != null && creneau.getClasseMatiere().getEnseignant() != null
+                ? creneau.getClasseMatiere().getEnseignant().getId() : null;
+        String salle = creneau.getSalle() != null ? creneau.getSalle().trim() : null;
+        if (enseignantId == null && (salle == null || salle.isBlank())) return;
+
+        List<EmploiDuTemps> memeJour = emploiDuTempsRepository
+                .findByEtablissementIdAndJourSemaine(etablissementId, creneau.getJourSemaine());
+
+        for (EmploiDuTemps autre : memeJour) {
+            if (autre.getId().equals(idAExclure)) continue;
+            if (!"COURS".equals(autre.getTypeCreneau())) continue;
+            boolean chevauche = creneau.getHeureDebut().isBefore(autre.getHeureFin())
+                    && autre.getHeureDebut().isBefore(creneau.getHeureFin());
+            if (!chevauche) continue;
+
+            Long autreEnseignantId = autre.getClasseMatiere() != null && autre.getClasseMatiere().getEnseignant() != null
+                    ? autre.getClasseMatiere().getEnseignant().getId() : null;
+            if (enseignantId != null && enseignantId.equals(autreEnseignantId)) {
+                throw new BadRequestException("Conflit d'emploi du temps : cet enseignant a déjà cours en "
+                        + libelleClasse(autre) + " de " + autre.getHeureDebut() + " à " + autre.getHeureFin() + ".");
+            }
+            String autreSalle = autre.getSalle() != null ? autre.getSalle().trim() : null;
+            if (salle != null && !salle.isBlank() && salle.equalsIgnoreCase(autreSalle)) {
+                throw new BadRequestException("Conflit d'emploi du temps : la salle " + salle + " est déjà occupée par "
+                        + libelleClasse(autre) + " de " + autre.getHeureDebut() + " à " + autre.getHeureFin() + ".");
+            }
+        }
+    }
+
+    private String libelleClasse(EmploiDuTemps creneau) {
+        return creneau.getClasse() != null && creneau.getClasse().getNom() != null ? creneau.getClasse().getNom() : "une autre classe";
     }
 
     private void validerCreneau(EmploiDuTemps creneau) {

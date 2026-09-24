@@ -10,6 +10,7 @@ public interface EmploiDuTempsRepository extends JpaRepository<EmploiDuTemps, Lo
     List<EmploiDuTemps> findByClasseId(Long classeId);
     List<EmploiDuTemps> findByClasseIdOrClasseMatiereClasseId(Long classeId, Long classeMatiereClasseId);
     List<EmploiDuTemps> findByClasseMatiereEnseignantId(Long enseignantId);
+    List<EmploiDuTemps> findByEtablissementIdAndJourSemaine(Long etablissementId, Integer jourSemaine);
 }
 
 
