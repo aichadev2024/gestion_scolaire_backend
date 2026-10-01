@@ -2,11 +2,15 @@ package com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.BadRequestException;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
+import com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.ClasseMatiere;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.EmploiDuTemps;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Notification;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseMatiereRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EmploiDuTempsRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.EmploiDuTempsService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,21 +21,26 @@ import java.util.Optional;
 @Transactional
 public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
 
+    private static final Logger log = LoggerFactory.getLogger(EmploiDuTempsServiceImpl.class);
+
     private final EmploiDuTempsRepository emploiDuTempsRepository;
     private final ClasseMatiereRepository classeMatiereRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
+    private final NotificationService notificationService;
 
     public EmploiDuTempsServiceImpl(
             EmploiDuTempsRepository emploiDuTempsRepository,
             ClasseMatiereRepository classeMatiereRepository,
             com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository classeRepository,
-            com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard
+            com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard,
+            NotificationService notificationService
     ) {
         this.emploiDuTempsRepository = emploiDuTempsRepository;
         this.classeMatiereRepository = classeMatiereRepository;
         this.classeRepository = classeRepository;
         this.tenantGuard = tenantGuard;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -50,7 +59,12 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
         }
         validerCreneau(creneau);
         detecterConflits(creneau, null);
-        return emploiDuTempsRepository.save(creneau);
+        EmploiDuTemps saved = emploiDuTempsRepository.save(creneau);
+        notifierEnseignant(saved, "Nouveau cours à l'emploi du temps",
+                "Un nouveau cours de " + libelleMatiere(saved) + " a été ajouté à votre emploi du temps : "
+                        + libelleJour(saved) + " de " + saved.getHeureDebut() + " à " + saved.getHeureFin()
+                        + " (" + libelleClasse(saved) + ").");
+        return saved;
     }
 
     @Override
@@ -78,7 +92,12 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
         }
 
         detecterConflits(creneau, id);
-        return emploiDuTempsRepository.save(creneau);
+        EmploiDuTemps saved = emploiDuTempsRepository.save(creneau);
+        notifierEnseignant(saved, "Emploi du temps modifié",
+                "Votre cours de " + libelleMatiere(saved) + " a été modifié : "
+                        + libelleJour(saved) + " de " + saved.getHeureDebut() + " à " + saved.getHeureFin()
+                        + " (" + libelleClasse(saved) + ").");
+        return saved;
     }
 
     @Override
@@ -100,7 +119,46 @@ public class EmploiDuTempsServiceImpl implements EmploiDuTempsService {
     public void supprimerCreneau(Long id) {
         EmploiDuTemps creneau = tenantGuard.requireSameTenant(emploiDuTempsRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Créneau introuvable")));
+        notifierEnseignant(creneau, "Cours retiré de l'emploi du temps",
+                "Votre cours de " + libelleMatiere(creneau) + " du " + libelleJour(creneau) + " ("
+                        + creneau.getHeureDebut() + " à " + creneau.getHeureFin() + ", " + libelleClasse(creneau)
+                        + ") a été retiré de l'emploi du temps.");
         emploiDuTempsRepository.delete(creneau);
+    }
+
+    /** Prévient l'enseignant concerné (base + push), sans jamais faire échouer l'opération sur l'emploi du temps. */
+    private void notifierEnseignant(EmploiDuTemps creneau, String titre, String contenu) {
+        if (!"COURS".equals(creneau.getTypeCreneau()) || creneau.getClasseMatiere() == null
+                || creneau.getClasseMatiere().getEnseignant() == null
+                || creneau.getClasseMatiere().getEnseignant().getProfil() == null
+                || creneau.getClasseMatiere().getEnseignant().getProfil().getUtilisateur() == null) {
+            return;
+        }
+        try {
+            Long destinataireId = creneau.getClasseMatiere().getEnseignant().getProfil().getUtilisateur().getId();
+            Long expediteurId;
+            try {
+                expediteurId = SecurityUtils.getCurrentUserId();
+            } catch (Exception e) {
+                expediteurId = null;
+            }
+            notificationService.envoyerNotification(
+                    Notification.builder().titre(titre).contenu(contenu).build(), expediteurId, destinataireId);
+        } catch (Exception e) {
+            log.warn("Notification de changement d'emploi du temps non envoyée pour le créneau {} : {}", creneau.getId(), e.getMessage());
+        }
+    }
+
+    private String libelleMatiere(EmploiDuTemps creneau) {
+        return creneau.getClasseMatiere() != null && creneau.getClasseMatiere().getMatiere() != null
+                && creneau.getClasseMatiere().getMatiere().getNom() != null
+                ? creneau.getClasseMatiere().getMatiere().getNom() : "la matière";
+    }
+
+    private String libelleJour(EmploiDuTemps creneau) {
+        String[] jours = {"", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"};
+        Integer j = creneau.getJourSemaine();
+        return j != null && j >= 1 && j < jours.length ? jours[j] : "un jour";
     }
 
     /**
