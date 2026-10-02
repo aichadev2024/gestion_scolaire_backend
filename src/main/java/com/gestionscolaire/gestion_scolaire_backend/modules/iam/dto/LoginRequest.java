@@ -11,6 +11,9 @@ public class LoginRequest {
 
     @NotBlank(message = "Le mot de passe est obligatoire")
     private String motDePasse;
+
+    /** « mobile » quand la connexion vient de l'application mobile (Android ou web mobile) — facultatif. */
+    private String client;
 }
 
 

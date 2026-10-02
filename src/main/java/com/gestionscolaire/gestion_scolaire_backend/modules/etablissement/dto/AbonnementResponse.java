@@ -18,5 +18,6 @@ public class AbonnementResponse {
     /** null = illimité. */
     private Integer maxEleves;
     private long elevesActifs;
+    private boolean mobileInclus;
     private LocalDateTime dateExpiration;
 }

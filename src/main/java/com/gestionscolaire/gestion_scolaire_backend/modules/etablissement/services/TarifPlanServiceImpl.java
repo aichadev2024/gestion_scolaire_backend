@@ -29,15 +29,16 @@ public class TarifPlanServiceImpl implements TarifPlanService {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void assurerPlansParDefaut() {
-        creerSiAbsent("PLAN_200", "Jusqu'à 200 élèves", "15000", 200);
-        creerSiAbsent("PLAN_300", "Jusqu'à 300 élèves", "25000", 300);
-        creerSiAbsent("ILLIMITE", "Élèves illimités", "35000", null);
+        creerSiAbsent("ESSENTIEL", "Essentiel", "15000", 200, false);
+        creerSiAbsent("STARTER", "Starter", "50000", 300, true);
+        creerSiAbsent("PRO", "Pro", "75000", null, true);
     }
 
-    private void creerSiAbsent(String code, String libelle, String prix, Integer maxEleves) {
+    private void creerSiAbsent(String code, String libelle, String prix, Integer maxEleves, boolean mobileInclus) {
         if (tarifPlanRepository.findByCodeIgnoreCase(code).isEmpty()) {
             tarifPlanRepository.save(TarifPlan.builder()
-                    .code(code).libelle(libelle).prixMensuel(new BigDecimal(prix)).maxEleves(maxEleves).build());
+                    .code(code).libelle(libelle).prixMensuel(new BigDecimal(prix))
+                    .maxEleves(maxEleves).mobileInclus(mobileInclus).build());
         }
     }
 
@@ -52,13 +53,13 @@ public class TarifPlanServiceImpl implements TarifPlanService {
 
     @Override
     @Transactional
-    public TarifPlanResponse modifierPlan(String code, BigDecimal prixMensuel, Integer maxEleves, Integer maxEnseignants) {
+    public TarifPlanResponse modifierPlan(String code, BigDecimal prixMensuel, Integer maxEleves, Integer maxEnseignants, boolean mobileInclus) {
         TarifPlan tarif = tarifPlanRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Plan tarifaire introuvable : " + code));
         tarif.setPrixMensuel(prixMensuel);
         tarif.setMaxEleves(maxEleves);
         tarif.setMaxEnseignants(maxEnseignants);
-        tarif.setLibelle(maxEleves != null ? "Jusqu'à " + maxEleves + " élèves" : "Élèves illimités");
+        tarif.setMobileInclus(mobileInclus);
         return toResponse(tarifPlanRepository.save(tarif));
     }
 
@@ -84,6 +85,13 @@ public class TarifPlanServiceImpl implements TarifPlanService {
     }
 
     @Override
+    public boolean mobileInclus(String code) {
+        return tarifPlanRepository.findByCodeIgnoreCase(code)
+                .map(t -> !Boolean.FALSE.equals(t.getMobileInclus()))
+                .orElse(true);
+    }
+
+    @Override
     public String obtenirLibelle(String code) {
         return tarifPlanRepository.findByCodeIgnoreCase(code)
                 .map(TarifPlan::getLibelle)
@@ -98,6 +106,7 @@ public class TarifPlanServiceImpl implements TarifPlanService {
                 .prixMensuel(t.getPrixMensuel())
                 .maxEleves(t.getMaxEleves())
                 .maxEnseignants(t.getMaxEnseignants())
+                .mobileInclus(!Boolean.FALSE.equals(t.getMobileInclus()))
                 .build();
     }
 }

@@ -111,7 +111,7 @@ public class RecuEtablissementPdfService {
             
             ajouterLigneHeader(subTable, "SERVICE / ABONNEMENT SOUSCRIT", "DÉTAILS FINANCIERS", headerFont);
             
-            String plan = etab.getPlanTarifaire() != null ? etab.getPlanTarifaire() : "PLAN_200";
+            String plan = etab.getPlanTarifaire() != null ? etab.getPlanTarifaire() : "STARTER";
             String montant = obtenirMontantParPlan(plan);
             String dateExp = etab.getDateExpirationAbonnement() != null 
                     ? etab.getDateExpirationAbonnement().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
@@ -166,7 +166,7 @@ public class RecuEtablissementPdfService {
     }
 
     private String obtenirMontantParPlan(String plan) {
-        java.math.BigDecimal prix = tarifPlanService.obtenirPrix(plan != null ? plan : "PLAN_200");
+        java.math.BigDecimal prix = tarifPlanService.obtenirPrix(plan != null ? plan : "STARTER");
         java.text.NumberFormat format = java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE);
         return format.format(prix) + " FCFA / mois";
     }

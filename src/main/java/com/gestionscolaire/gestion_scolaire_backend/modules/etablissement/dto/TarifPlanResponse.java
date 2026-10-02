@@ -17,4 +17,5 @@ public class TarifPlanResponse {
     private Integer maxEleves;
     /** Nombre max de comptes enseignants pour ce plan — null = illimité. */
     private Integer maxEnseignants;
+    private boolean mobileInclus;
 }

@@ -31,6 +31,6 @@ public class TarifController {
             @PathVariable String code,
             @Valid @RequestBody ModifierTarifRequest request
     ) {
-        return ResponseEntity.ok(tarifPlanService.modifierPlan(code, request.getPrixMensuel(), request.getMaxEleves(), request.getMaxEnseignants()));
+        return ResponseEntity.ok(tarifPlanService.modifierPlan(code, request.getPrixMensuel(), request.getMaxEleves(), request.getMaxEnseignants(), request.getMobileInclus()));
     }
 }

@@ -19,4 +19,7 @@ public class ModifierTarifRequest {
     /** Nombre max de comptes enseignants — laisser vide/null pour illimité. */
     @Positive(message = "La limite d'enseignants doit être supérieure à zéro")
     private Integer maxEnseignants;
+
+    @NotNull(message = "Précisez si l'application mobile est incluse")
+    private Boolean mobileInclus;
 }

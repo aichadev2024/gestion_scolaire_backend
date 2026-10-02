@@ -32,8 +32,14 @@ public class TarifPlan {
     @Column(name = "max_eleves")
     private Integer maxEleves;
 
+    /** Nom du plan (« Essentiel », « Starter », « Pro »). */
     @Column(length = 60)
     private String libelle;
+
+    /** Accès à l'application mobile (parents, élèves, enseignants) inclus dans ce plan. */
+    @Builder.Default
+    @Column(name = "mobile_inclus", nullable = false)
+    private Boolean mobileInclus = true;
 
     @UpdateTimestamp
     @Column(name = "date_modification", nullable = false)

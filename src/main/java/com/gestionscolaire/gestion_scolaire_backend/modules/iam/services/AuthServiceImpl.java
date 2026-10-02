@@ -108,6 +108,24 @@ public class AuthServiceImpl implements AuthService {
                 .orElse(null);
     }
 
+    /**
+     * L'application mobile n'est pas incluse dans tous les plans. Parents et élèves n'ont AUCUN
+     * autre accès que le mobile : leur connexion est donc refusée sur un plan sans mobile, quel
+     * que soit le client. Pour le personnel (qui a aussi le web), seule la connexion depuis
+     * l'appli mobile est refusée.
+     */
+    private void verifierAccesMobile(Utilisateur utilisateur,
+            com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etab,
+            LoginRequest request) {
+        String role = utilisateur.getRole() != null ? utilisateur.getRole().getNom() : "";
+        boolean roleMobileSeulement = "PARENT".equalsIgnoreCase(role) || "ELEVE".equalsIgnoreCase(role);
+        boolean depuisMobile = "mobile".equalsIgnoreCase(request.getClient());
+        if ((roleMobileSeulement || depuisMobile) && !tarifPlanService.mobileInclus(etab.getPlanTarifaire())) {
+            throw new BadRequestException("L'application mobile n'est pas incluse dans l'abonnement de votre "
+                    + "établissement. Contactez la direction de l'école.");
+        }
+    }
+
     @Override
     public AuthResponse login(LoginRequest request) {
         try {
@@ -142,6 +160,7 @@ public class AuthServiceImpl implements AuthService {
                     } catch (Exception ignored) {}
                 }
             }
+            verifierAccesMobile(utilisateur, etab, request);
         }
 
         // Première connexion : Envoi d'un OTP par Email uniquement si l'utilisateur possède une adresse e-mail

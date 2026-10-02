@@ -59,7 +59,7 @@ public class Etablissement {
 
     @Column(name = "plan_tarifaire", length = 50)
     @Builder.Default
-    private String planTarifaire = "PLAN_200";
+    private String planTarifaire = "STARTER";
 
     @Column(name = "date_expiration_abonnement")
     private LocalDateTime dateExpirationAbonnement;

@@ -43,6 +43,7 @@ public class AbonnementController {
                 .libelle(tarifPlanService.obtenirLibelle(plan))
                 .prixMensuel(tarifPlanService.obtenirPrix(plan))
                 .maxEleves(tarifPlanService.obtenirLimiteEleves(plan))
+                .mobileInclus(tarifPlanService.mobileInclus(plan))
                 .elevesActifs(eleveRepository.compterActifs(etablissementId))
                 .dateExpiration(etab.getDateExpirationAbonnement())
                 .build());

@@ -102,7 +102,7 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .emailContact(request.getEmailContact())
                 .telephone(request.getTelephone())
                 .adresse(request.getAdresse())
-                .planTarifaire(request.getPlanTarifaire() != null ? request.getPlanTarifaire() : "PLAN_200")
+                .planTarifaire(request.getPlanTarifaire() != null ? request.getPlanTarifaire() : "STARTER")
                 .dateExpirationAbonnement(expiryDate)
                 .statut(StatutEtablissement.ACTIF)
                 .typeEtablissement(typeFinal)
