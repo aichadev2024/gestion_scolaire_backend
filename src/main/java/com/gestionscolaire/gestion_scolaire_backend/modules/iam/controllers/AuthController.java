@@ -109,12 +109,9 @@ public class AuthController {
     // ── Mot de passe oublié : demande de réinitialisation ─────────────────────
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        String token = passwordResetService.demanderReinitialisation(request.getEmail());
-        // En production, seul l'email est envoyé et on ne retourne pas le token
-        // En dev, on retourne le token pour faciliter les tests
+        passwordResetService.demanderReinitialisation(request.getEmail());
         return ResponseEntity.ok(Map.of(
-            "message", "Si cet email est enregistré, un lien de réinitialisation a été envoyé.",
-            "dev_token", token  // Retirer en production
+            "message", "Si cet email est enregistré, un lien de réinitialisation a été envoyé."
         ));
     }
 

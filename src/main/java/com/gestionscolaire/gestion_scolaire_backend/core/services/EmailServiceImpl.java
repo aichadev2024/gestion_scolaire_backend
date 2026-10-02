@@ -130,6 +130,26 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendPasswordResetEmail(String destinataire, String lienReinitialisation, int validiteMinutes) {
+        String subject = "🔑 Réinitialisation de votre mot de passe Netaa École";
+        String htmlBody = """
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
+                <div style="text-align: center; padding-bottom: 15px; border-bottom: 2px solid #1B365D;">
+                    <h3 style="color: #1B365D; margin: 0;">🏛️ Netaa École — Sécurité</h3>
+                </div>
+                <div style="padding: 20px 0; text-align: center;">
+                    <p style="font-size: 15px; color: #475569;">Vous avez demandé à réinitialiser votre mot de passe.</p>
+                    <a href="%s" style="background: #1B365D; color: #ffffff; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; margin: 15px 0;">Choisir un nouveau mot de passe</a>
+                    <p style="font-size: 13px; color: #94a3b8; margin-top: 10px;">Ce lien est valable <strong>%d minutes</strong>. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe ne sera pas modifié.</p>
+                </div>
+            </div>
+            """.formatted(lienReinitialisation, validiteMinutes);
+
+        logger.info("🔑 [SÉCURITÉ] Lien de réinitialisation de mot de passe envoyé à [{}].", destinataire);
+        sendMailInternal(destinataire, subject, htmlBody);
+    }
+
+    @Override
     public void sendSubscriptionWarningEmail(com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement etab, long joursRestants) {
         String recipient = (etab.getEmailContact() != null && !etab.getEmailContact().isBlank()) 
                 ? etab.getEmailContact() 

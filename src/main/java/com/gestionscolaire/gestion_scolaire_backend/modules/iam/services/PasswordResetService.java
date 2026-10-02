@@ -8,8 +8,6 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.Pas
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +24,7 @@ public class PasswordResetService {
     @Autowired private PasswordEncoder passwordEncoder;
 
     // JavaMailSender est optionnel — si non configuré, on ne plante pas
-    @Autowired(required = false)
-    private JavaMailSender mailSender;
+    @Autowired private com.gestionscolaire.gestion_scolaire_backend.core.services.EmailService emailService;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
@@ -36,12 +33,16 @@ public class PasswordResetService {
     private int expiryMinutes;
 
     /**
-     * Génère un token et envoie l'email de réinitialisation.
-     * Retourne le token dans tous les cas (utile pour dev/test si mail non configuré).
+     * Génère un token et l'envoie PAR E-MAIL uniquement. Ne renvoie jamais le token à l'appelant et ne
+     * révèle pas si l'adresse correspond à un compte (réponse identique dans tous les cas) : sinon
+     * n'importe qui pouvait réinitialiser le mot de passe de n'importe quel compte, ou deviner
+     * quelles adresses sont inscrites.
      */
-    public String demanderReinitialisation(String email) {
-        Utilisateur utilisateur = utilisateurRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Aucun compte associé à cet email."));
+    public void demanderReinitialisation(String email) {
+        Utilisateur utilisateur = utilisateurRepository.findByEmail(email).orElse(null);
+        if (utilisateur == null) {
+            return;
+        }
 
         // Supprimer les anciens tokens
         tokenRepository.deleteByUtilisateurId(utilisateur.getId());
@@ -55,29 +56,12 @@ public class PasswordResetService {
                 .build();
         tokenRepository.save(resetToken);
 
-        String resetLink = frontendUrl + "/reset-password?token=" + token;
-
-        // Envoi email si le serveur mail est configuré
-        if (mailSender != null) {
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setTo(email);
-                message.setSubject("Réinitialisation de votre mot de passe — Netaa");
-                message.setText(
-                    "Bonjour,\n\n" +
-                    "Vous avez demandé à réinitialiser votre mot de passe sur Netaa.\n\n" +
-                    "Cliquez sur ce lien (valable " + expiryMinutes + " minutes) :\n" + resetLink + "\n\n" +
-                    "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.\n\n" +
-                    "L'équipe Netaa"
-                );
-                mailSender.send(message);
-            } catch (Exception e) {
-                // Ne pas bloquer si l'email échoue
-                System.err.println("[PasswordReset] Erreur envoi email : " + e.getMessage());
-            }
+        try {
+            emailService.sendPasswordResetEmail(email, frontendUrl + "/reset-password?token=" + token, expiryMinutes);
+        } catch (Exception e) {
+            // Ne pas bloquer ni révéler l'échec à l'appelant
+            System.err.println("[PasswordReset] Erreur envoi email : " + e.getMessage());
         }
-
-        return token; // Retourné pour affichage en dev
     }
 
     /**
