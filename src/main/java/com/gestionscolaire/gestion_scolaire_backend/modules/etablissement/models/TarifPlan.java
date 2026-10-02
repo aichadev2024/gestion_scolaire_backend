@@ -38,7 +38,7 @@ public class TarifPlan {
 
     /** Accès à l'application mobile (parents, élèves, enseignants) inclus dans ce plan. */
     @Builder.Default
-    @Column(name = "mobile_inclus", nullable = false)
+    @Column(name = "mobile_inclus", nullable = false, columnDefinition = "boolean default true")
     private Boolean mobileInclus = true;
 
     @UpdateTimestamp

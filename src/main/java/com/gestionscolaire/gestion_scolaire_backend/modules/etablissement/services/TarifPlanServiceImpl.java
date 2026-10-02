@@ -4,6 +4,7 @@ import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotF
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.dto.TarifPlanResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.TarifPlan;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.repositories.TarifPlanRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.repositories.EtablissementRepository;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -17,29 +18,54 @@ import java.util.List;
 public class TarifPlanServiceImpl implements TarifPlanService {
 
     private final TarifPlanRepository tarifPlanRepository;
+    private final EtablissementRepository etablissementRepository;
 
-    public TarifPlanServiceImpl(TarifPlanRepository tarifPlanRepository) {
+    public TarifPlanServiceImpl(TarifPlanRepository tarifPlanRepository, EtablissementRepository etablissementRepository) {
         this.tarifPlanRepository = tarifPlanRepository;
+        this.etablissementRepository = etablissementRepository;
     }
 
     /**
-     * Filet de sécurité au démarrage : si un palier manque (ex. base vidée manuellement pour
-     * des tests, sans reset de l'historique Flyway — la migration d'origine ne se rejoue
-     * jamais), on le recrée avec des valeurs par défaut sans jamais écraser un plan présent.
+     * Met les plans à niveau au démarrage, sans jamais écraser un réglage fait par le super-admin.
+     *
+     * En production Flyway est désactivé (le schéma suit les entités via ddl-auto=update) : les
+     * migrations SQL de données n'y sont donc jamais exécutées, c'est ce code qui les remplace.
+     * Il (re)crée les trois plans, complète les anciennes lignes STARTER/PRO (jusqu'ici limitées par
+     * le nombre d'enseignants) et rebascule vers elles les écoles et plans provisoires
+     * PLAN_200/PLAN_300/ILLIMITE d'un déploiement intermédiaire.
      */
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
     public void assurerPlansParDefaut() {
-        creerSiAbsent("ESSENTIEL", "Essentiel", "15000", 200, false);
-        creerSiAbsent("STARTER", "Starter", "50000", 300, true);
-        creerSiAbsent("PRO", "Pro", "75000", null, true);
+        harmoniser("ESSENTIEL", "Essentiel", "15000", 200, false);
+        harmoniser("STARTER", "Starter", "50000", 300, true);
+        harmoniser("PRO", "Pro", "75000", null, true);
+
+        // Jamais vers ESSENTIEL : une école existante y perdrait l'appli mobile qu'elle utilise.
+        remplacerPlanProvisoire("PLAN_200", "STARTER");
+        remplacerPlanProvisoire("PLAN_300", "STARTER");
+        remplacerPlanProvisoire("ILLIMITE", "PRO");
     }
 
-    private void creerSiAbsent(String code, String libelle, String prix, Integer maxEleves, boolean mobileInclus) {
-        if (tarifPlanRepository.findByCodeIgnoreCase(code).isEmpty()) {
+    /** Crée le plan s'il manque ; complète une ancienne ligne (sans nom) une seule fois, en gardant son prix. */
+    private void harmoniser(String code, String libelle, String prix, Integer maxEleves, boolean mobileInclus) {
+        TarifPlan plan = tarifPlanRepository.findByCodeIgnoreCase(code).orElse(null);
+        if (plan == null) {
             tarifPlanRepository.save(TarifPlan.builder()
                     .code(code).libelle(libelle).prixMensuel(new BigDecimal(prix))
                     .maxEleves(maxEleves).mobileInclus(mobileInclus).build());
+        } else if (plan.getLibelle() == null || plan.getLibelle().isBlank()) {
+            plan.setLibelle(libelle);
+            plan.setMaxEleves(maxEleves);
+            plan.setMaxEnseignants(null);
+            plan.setMobileInclus(mobileInclus);
+            tarifPlanRepository.save(plan);
         }
+    }
+
+    private void remplacerPlanProvisoire(String ancien, String nouveau) {
+        etablissementRepository.changerPlan(ancien, nouveau);
+        tarifPlanRepository.findByCodeIgnoreCase(ancien).ifPresent(tarifPlanRepository::delete);
     }
 
     @Override
