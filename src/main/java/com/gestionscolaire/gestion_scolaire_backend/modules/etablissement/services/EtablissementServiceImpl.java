@@ -106,6 +106,7 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .dateExpirationAbonnement(expiryDate)
                 .statut(StatutEtablissement.ACTIF)
                 .typeEtablissement(typeFinal)
+                .nomEnseignementProfessionnel(nettoyerNom(request.getNomEnseignementProfessionnel()))
                 .build();
 
         if (request.getNiveauIds() != null && !request.getNiveauIds().isEmpty()) {
@@ -202,6 +203,9 @@ public class EtablissementServiceImpl implements EtablissementService {
         if (request.getSlogan() != null) {
             etablissement.setSlogan(request.getSlogan().isBlank() ? null : request.getSlogan().trim());
         }
+        if (request.getNomEnseignementProfessionnel() != null) {
+            etablissement.setNomEnseignementProfessionnel(nettoyerNom(request.getNomEnseignementProfessionnel()));
+        }
         // null = ne pas toucher aux niveaux actuels ; [] explicite = supprimer toute restriction ;
         // liste non vide = remplace intégralement (voir doc du champ dans ModifierEtablissementRequest).
         if (request.getNiveauIds() != null) {
@@ -278,6 +282,7 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .logoUrl(etablissement.getLogoUrl())
                 .devise(etablissement.getDevise())
                 .slogan(etablissement.getSlogan())
+                .nomEnseignementProfessionnel(etablissement.getNomEnseignementProfessionnel())
                 .typeEtablissement(etablissement.getTypeEtablissement())
                 .statut(etablissement.getStatut())
                 .planTarifaire(etablissement.getPlanTarifaire())
@@ -292,6 +297,8 @@ public class EtablissementServiceImpl implements EtablissementService {
                         .map(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau::getNom).toList())
                 .build();
     }
+
+    private static String nettoyerNom(String nom) {
+        return nom == null || nom.isBlank() ? null : nom.trim();
+    }
 }
-
-

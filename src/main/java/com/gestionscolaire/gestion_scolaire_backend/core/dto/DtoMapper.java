@@ -70,7 +70,7 @@ public class DtoMapper {
                 .profil(toProfilDto(profil))
                 .etablissementNom(etabNom)
                 .niveauSuperviseId(utilisateur.getNiveauSupervise() != null ? utilisateur.getNiveauSupervise().getId() : null)
-                .niveauSuperviseNom(utilisateur.getNiveauSupervise() != null ? utilisateur.getNiveauSupervise().getNom() : null)
+                .niveauSuperviseNom(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau.libelle(utilisateur.getNiveauSupervise(), utilisateur.getEtablissement()))
                 .build();
     }
 
@@ -126,7 +126,7 @@ public class DtoMapper {
                 .id(classe.getId())
                 .nom(classe.getNom())
                 .niveauId(classe.getNiveau() != null ? classe.getNiveau().getId() : null)
-                .niveauNom(classe.getNiveau() != null ? classe.getNiveau().getNom() : null)
+                .niveauNom(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau.libelle(classe.getNiveau(), classe.getEtablissement()))
                 .enseignantPrincipalId(classe.getEnseignantPrincipal() != null ? classe.getEnseignantPrincipal().getId() : null)
                 .enseignantPrincipalNom(ensNom)
                 .anneeScolaire(classe.getAnneeScolaire())

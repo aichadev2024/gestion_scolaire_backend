@@ -21,4 +21,7 @@ public class ModifierEtablissementRequest {
      * champ absent (null) = ne pas toucher aux niveaux actuels ; liste vide [] explicite = supprimer
      * toute restriction ; liste non vide = remplace intégralement les niveaux autorisés. */
     private java.util.List<Integer> niveauIds;
+
+    /** Nom propre de l'enseignement professionnel (ex. « IFTICA »). null = inchangé ; vide = retirer le nom propre. */
+    private String nomEnseignementProfessionnel;
 }

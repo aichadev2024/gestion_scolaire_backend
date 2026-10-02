@@ -270,7 +270,7 @@ public class SeanceCoursService {
                         cm.getClasse() != null ? cm.getClasse().getId() : null,
                         cm.getClasse() != null ? cm.getClasse().getNom() : null,
                         cm.getMatiere() != null ? cm.getMatiere().getNom() : null,
-                        cm.getClasse() != null && cm.getClasse().getNiveau() != null ? cm.getClasse().getNiveau().getNom() : null))
+                        cm.getClasse() != null ? com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau.libelle(cm.getClasse().getNiveau(), cm.getClasse().getEtablissement()) : null))
                 .sorted(Comparator.comparing(MonCoursResponse::classeNom, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
     }

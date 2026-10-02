@@ -35,4 +35,7 @@ public class CreateEtablissementWithAdminRequest {
     /** Niveaux que cet établissement propose (ex. Lycée Général + Enseignement Professionnel) —
      * null/vide = aucune restriction (n'importe quel niveau global peut être utilisé). */
     private List<Integer> niveauIds;
+
+    /** Nom propre de l'enseignement professionnel de l'école (ex. « IFTICA ») — facultatif. */
+    private String nomEnseignementProfessionnel;
 }

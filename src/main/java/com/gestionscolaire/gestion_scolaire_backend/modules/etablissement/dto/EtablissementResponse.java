@@ -18,6 +18,7 @@ public class EtablissementResponse {
     private String logoUrl;
     private String devise;
     private String slogan;
+    private String nomEnseignementProfessionnel;
     private com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.TypeEtablissement typeEtablissement;
     private StatutEtablissement statut;
     private String planTarifaire;

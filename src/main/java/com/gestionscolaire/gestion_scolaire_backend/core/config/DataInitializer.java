@@ -21,7 +21,7 @@ public class DataInitializer implements CommandLineRunner {
     );
 
     private static final List<String> NIVEAUX = List.of(
-            "Crèche", "Maternelle", "Primaire", "Collège", "Lycée"
+            "Crèche", "Maternelle", "Primaire", "Collège", "Lycée", Niveau.ENSEIGNEMENT_PROFESSIONNEL
     );
 
     private final RoleRepository roleRepository;

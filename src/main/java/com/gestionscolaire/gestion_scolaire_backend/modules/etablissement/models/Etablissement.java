@@ -57,6 +57,10 @@ public class Etablissement {
     @Builder.Default
     private TypeEtablissement typeEtablissement = TypeEtablissement.ECOLE;
 
+    /** Nom que cette école donne à son enseignement professionnel (ex. « IFTICA »). Facultatif. */
+    @Column(name = "nom_enseignement_professionnel", length = 100)
+    private String nomEnseignementProfessionnel;
+
     @Column(name = "plan_tarifaire", length = 50)
     @Builder.Default
     private String planTarifaire = "STARTER";

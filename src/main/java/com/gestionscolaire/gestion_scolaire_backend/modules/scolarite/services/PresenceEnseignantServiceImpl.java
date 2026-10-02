@@ -83,7 +83,7 @@ public class PresenceEnseignantServiceImpl implements PresenceEnseignantService 
                     Enseignant e = p.getEnseignant();
                     List<String> niveaux = niveauxParEnseignant.computeIfAbsent(e.getId(), id ->
                             classeMatiereRepository.findByEnseignantId(id).stream()
-                                    .map(cm -> cm.getClasse() != null && cm.getClasse().getNiveau() != null ? cm.getClasse().getNiveau().getNom() : null)
+                                    .map(cm -> cm.getClasse() != null ? com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Niveau.libelle(cm.getClasse().getNiveau(), cm.getClasse().getEtablissement()) : null)
                                     .filter(java.util.Objects::nonNull)
                                     .distinct()
                                     .sorted()
