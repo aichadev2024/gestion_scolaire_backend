@@ -77,6 +77,27 @@ public class EleveServiceImpl implements EleveService {
     @Autowired
     private PaiementRepository paiementRepository;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille;
+
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService;
+
+    /**
+     * Refuse l'inscription d'un élève de plus quand l'établissement a atteint la limite de son
+     * plan (élèves actifs uniquement : les élèves archivés ne comptent pas).
+     */
+    private void verifierLimiteEleves(Etablissement etablissement) {
+        String plan = etablissement.getPlanTarifaire();
+        Integer limite = tarifPlanService.obtenirLimiteEleves(plan);
+        if (limite == null) return;
+        long actifs = eleveRepository.compterActifs(etablissement.getId());
+        if (actifs >= limite) {
+            throw new BadRequestException("Limite atteinte : votre abonnement (" + tarifPlanService.obtenirLibelle(plan)
+                    + ") est limité à " + limite + " élèves actifs. Archivez des élèves ou passez au plan supérieur.");
+        }
+    }
+
     private Parent resoudreParent(Long parentId) {
         if (parentId == null) return null;
 
@@ -107,10 +128,14 @@ public class EleveServiceImpl implements EleveService {
     @Override
     public Eleve inscrireEleve(Eleve eleve, Profil profil, Long parentId, Long classeId, String motDePasseInitial) {
         // Rattachement explicite à l'établissement de l'utilisateur courant (le TenantEntityListener sert de filet de sécurité).
+        Etablissement etabCourant = null;
         try {
-            Etablissement etabCourant = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur().getEtablissement();
-            if (etabCourant != null) eleve.setEtablissement(etabCourant);
+            etabCourant = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUser().getUtilisateur().getEtablissement();
         } catch (Exception ignored) {}
+        if (etabCourant != null) {
+            verifierLimiteEleves(etabCourant);
+            eleve.setEtablissement(etabCourant);
+        }
 
         if (parentId != null) {
             eleve.setParent(resoudreParent(parentId));
@@ -213,8 +238,30 @@ public class EleveServiceImpl implements EleveService {
         return eleveRepository.save(eleve);
     }
 
+    /**
+     * Candidats pour un identifiant ambigu, dans l'ordre de priorité : fiche élève, compte de
+     * l'élève, compte du parent, fiche parent. Les apps mobiles passent l'id du COMPTE connecté
+     * (« /eleves/{userId} ») : cet id peut coïncider avec la fiche d'un tout autre élève.
+     */
+    private List<Eleve> candidatsPourIdentifiant(Long id) {
+        List<Eleve> candidats = new ArrayList<>();
+        eleveRepository.findById(id).ifPresent(candidats::add);
+        eleveRepository.findByProfilUtilisateurId(id).ifPresent(candidats::add);
+        candidats.addAll(eleveRepository.findByParentProfilUtilisateurId(id));
+        candidats.addAll(eleveRepository.findByParentId(id));
+        return candidats;
+    }
+
     @Override
     public Optional<Eleve> trouverParId(Long id) {
+        if (accesFamille.restreint()) {
+            // Parent/élève : on retient le premier candidat qui est réellement de SA famille,
+            // jamais celui d'un autre simplement parce que les identifiants coïncident.
+            return candidatsPourIdentifiant(id).stream()
+                    .filter(tenantGuard::appartientAuTenantCourant)
+                    .filter(accesFamille::concerne)
+                    .findFirst();
+        }
         Optional<Eleve> eleve = eleveRepository.findById(id);
 
         if (eleve.isEmpty()) {
@@ -244,7 +291,8 @@ public class EleveServiceImpl implements EleveService {
 
     @Override
     public List<Eleve> listerElevesParClasse(Long classeId) {
-        return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(eleveRepository.findByClasseId(classeId)), this::niveauDe);
+        return accesFamille.filtrer(
+                tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(eleveRepository.findByClasseId(classeId)), this::niveauDe));
     }
 
     @Override
@@ -298,8 +346,9 @@ public class EleveServiceImpl implements EleveService {
             }
         }
 
-        // Cloisonnement final : ne renvoyer que les élèves de l'établissement courant.
-        return new ArrayList<>(tenantGuard.filterSameTenant(resultats));
+        // Cloisonnement final : établissement courant, puis (parent/élève) sa propre famille —
+        // un parent ne peut pas lister les enfants d'un autre en changeant l'identifiant.
+        return new ArrayList<>(accesFamille.filtrer(tenantGuard.filterSameTenant(resultats)));
     }
 
     @Override
@@ -310,7 +359,7 @@ public class EleveServiceImpl implements EleveService {
         } else {
             eleves = eleveRepository.findByEtablissementId(tenantGuard.requireEtablissementId());
         }
-        return tenantGuard.filterSameNiveau(eleves, this::niveauDe);
+        return accesFamille.filtrer(tenantGuard.filterSameNiveau(eleves, this::niveauDe));
     }
 
     private static final java.util.Set<String> STATUTS_INSCRIPTION =

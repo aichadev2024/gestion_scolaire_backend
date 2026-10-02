@@ -43,6 +43,9 @@ public class PaiementServiceImpl implements PaiementService {
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
     @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille;
+
+    @Autowired
     private NotificationService notificationService;
 
     @Autowired
@@ -170,6 +173,9 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<Paiement> listerPaiementsEleve(Long eleveId) {
+        if (accesFamille.restreint()) {
+            accesFamille.verifier(eleveRepository.findById(eleveId).orElse(null));
+        }
         return tenantGuard.filterSameNiveau(
                 tenantGuard.filterSameTenant(paiementRepository.findByEleveId(eleveId)),
                 p -> p.getEleve() != null ? niveauDe(p.getEleve()) : null);
@@ -177,7 +183,10 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public Optional<Paiement> trouverParNumeroRecu(String numeroRecu) {
-        return paiementRepository.findByNumeroRecu(numeroRecu).filter(tenantGuard::appartientAuTenantCourant);
+        // Un parent ne retrouve que les reçus de ses propres enfants (le numéro de reçu seul ne suffit pas).
+        return paiementRepository.findByNumeroRecu(numeroRecu)
+                .filter(tenantGuard::appartientAuTenantCourant)
+                .filter(p -> p.getEleve() == null || accesFamille.concerne(p.getEleve()));
     }
 
     @Override
@@ -291,6 +300,7 @@ public class PaiementServiceImpl implements PaiementService {
     public Double calculerSoldeRestantEleve(Long eleveId) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        accesFamille.verifier(eleve);
 
         if (eleve.getClasse() == null) {
             return 0.0;

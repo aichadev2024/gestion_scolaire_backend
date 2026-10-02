@@ -50,6 +50,9 @@ public class BulletinServiceImpl implements BulletinService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille;
+
     @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
 
@@ -106,6 +109,7 @@ public class BulletinServiceImpl implements BulletinService {
     public BulletinResponse getBulletinDetails(Long eleveId, String periode, String anneeScolaire) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        accesFamille.verifier(eleve);
         if (eleve.getClasse() != null) {
             tenantGuard.requireSameNiveau(eleve.getClasse(), c -> c.getNiveau() != null ? c.getNiveau().getId() : null);
         }

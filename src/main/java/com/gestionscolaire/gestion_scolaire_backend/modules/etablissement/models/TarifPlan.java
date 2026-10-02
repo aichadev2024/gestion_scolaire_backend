@@ -28,6 +28,13 @@ public class TarifPlan {
     @Column(name = "max_enseignants")
     private Integer maxEnseignants;
 
+    /** Nombre max d'élèves actifs pour ce plan — null = illimité. */
+    @Column(name = "max_eleves")
+    private Integer maxEleves;
+
+    @Column(length = 60)
+    private String libelle;
+
     @UpdateTimestamp
     @Column(name = "date_modification", nullable = false)
     private LocalDateTime dateModification;

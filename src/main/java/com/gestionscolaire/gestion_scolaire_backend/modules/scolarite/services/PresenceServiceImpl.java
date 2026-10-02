@@ -49,6 +49,9 @@ public class PresenceServiceImpl implements PresenceService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille;
+
     @Override
     public Presence enregistrerPresence(Presence presence, Long eleveId, Long classeMatiereId) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
@@ -198,6 +201,9 @@ public class PresenceServiceImpl implements PresenceService {
 
     @Override
     public List<Presence> listerPresencesEleve(Long eleveId) {
+        if (accesFamille.restreint()) {
+            accesFamille.verifier(eleveRepository.findById(eleveId).orElse(null));
+        }
         return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(presenceRepository.findByEleveId(eleveId)), this::niveauDe);
     }
 

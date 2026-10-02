@@ -111,13 +111,13 @@ public class RecuEtablissementPdfService {
             
             ajouterLigneHeader(subTable, "SERVICE / ABONNEMENT SOUSCRIT", "DÉTAILS FINANCIERS", headerFont);
             
-            String plan = etab.getPlanTarifaire() != null ? etab.getPlanTarifaire() : "STARTER";
+            String plan = etab.getPlanTarifaire() != null ? etab.getPlanTarifaire() : "PLAN_200";
             String montant = obtenirMontantParPlan(plan);
             String dateExp = etab.getDateExpirationAbonnement() != null 
                     ? etab.getDateExpirationAbonnement().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                     : "1 mois à compter de l'activation";
 
-            ajouterLigne(subTable, "Licence Logicielle", "Plateforme Netaa École (Plan " + plan + ")", headerFont, normalFont);
+            ajouterLigne(subTable, "Licence Logicielle", "Plateforme Netaa École (" + tarifPlanService.obtenirLibelle(plan) + ")", headerFont, normalFont);
             ajouterLigne(subTable, "Période de Validité", "Mensuelle (Jusqu'au " + dateExp + ")", headerFont, normalFont);
             ajouterLigne(subTable, "Montant Mensuel Réglé", montant, headerFont, boldFont);
             ajouterLigne(subTable, "Mode de Règlement", "Paiement / Validation Directe Super-Admin", headerFont, normalFont);
@@ -166,7 +166,7 @@ public class RecuEtablissementPdfService {
     }
 
     private String obtenirMontantParPlan(String plan) {
-        java.math.BigDecimal prix = tarifPlanService.obtenirPrix(plan != null ? plan : "STARTER");
+        java.math.BigDecimal prix = tarifPlanService.obtenirPrix(plan != null ? plan : "PLAN_200");
         java.text.NumberFormat format = java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE);
         return format.format(prix) + " FCFA / mois";
     }

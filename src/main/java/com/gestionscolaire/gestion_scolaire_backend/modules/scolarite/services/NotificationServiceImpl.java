@@ -12,6 +12,7 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.N
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -88,25 +89,36 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    /** Une boîte de notifications est strictement personnelle : on refuse l'id d'un autre utilisateur. */
+    private void exigerMaPropreBoite(Long destinataireId) {
+        if (destinataireId == null || !destinataireId.equals(SecurityUtils.getCurrentUserId())) {
+            throw new AccessDeniedException("Ces notifications ne vous appartiennent pas.");
+        }
+    }
+
     @Override
     public List<Notification> listerPourDestinataire(Long destinataireId) {
+        exigerMaPropreBoite(destinataireId);
         return tenantGuard.filterSameTenant(notificationRepository.findByDestinataireIdOrderByDateCreationDesc(destinataireId));
     }
 
     @Override
     public List<Notification> listerNonLues(Long destinataireId) {
+        exigerMaPropreBoite(destinataireId);
         return tenantGuard.filterSameTenant(notificationRepository.findByDestinataireIdAndEstLuOrderByDateCreationDesc(destinataireId, false));
     }
 
     @Override
     public Optional<Notification> trouverParId(Long id) {
-        return notificationRepository.findById(id).filter(tenantGuard::appartientAuTenantCourant);
+        Long moi = SecurityUtils.getCurrentUserId();
+        return notificationRepository.findById(id)
+                .filter(tenantGuard::appartientAuTenantCourant)
+                .filter(n -> n.getDestinataire() != null && moi.equals(n.getDestinataire().getId()));
     }
 
     @Override
     public void marquerCommeLue(Long id) {
-        Notification notification = tenantGuard.requireSameTenant(notificationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Notification introuvable")));
+        Notification notification = notificationDuDestinataireCourant(id);
         notification.setEstLu(true);
         notificationRepository.save(notification);
     }

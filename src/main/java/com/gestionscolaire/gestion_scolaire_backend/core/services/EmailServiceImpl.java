@@ -18,6 +18,9 @@ public class EmailServiceImpl implements EmailService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.services.TarifPlanService tarifPlanService;
+
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
 
@@ -146,7 +149,7 @@ public class EmailServiceImpl implements EmailService {
                 <div style="padding: 20px 0;">
                     <p style="font-size: 16px; color: #333333;">Bonjour Administrateur,</p>
                     <p style="font-size: 15px; color: #555555; line-height: 1.6;">
-                        L'abonnement Netaa École de l'établissement <strong>%s</strong> (Plan <strong>%s</strong>) arrive à son terme le <strong>%s</strong> (dans <strong>%d jours</strong>).
+                        L'abonnement Netaa École de l'établissement <strong>%s</strong> (<strong>%s</strong>) arrive à son terme le <strong>%s</strong> (dans <strong>%d jours</strong>).
                     </p>
                     <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0;">
                         <p style="margin: 0; color: #b45309; font-size: 14px;">
@@ -161,7 +164,7 @@ public class EmailServiceImpl implements EmailService {
                     &copy; 2026 Netaa École — République du Mali. Tous droits réservés.
                 </div>
             </div>
-            """.formatted(etab.getNom(), etab.getNom(), etab.getPlanTarifaire(), formattedDate, joursRestants, frontendUrl + "/login");
+            """.formatted(etab.getNom(), etab.getNom(), tarifPlanService.obtenirLibelle(etab.getPlanTarifaire()), formattedDate, joursRestants, frontendUrl + "/login");
 
         logger.info("⚠️ [ABONNEMENT] Envoi de l'alerte d'expiration pour l'établissement [{}] à [{}]", etab.getNom(), recipient);
         sendMailInternal(recipient, subject, htmlBody);
@@ -232,7 +235,7 @@ public class EmailServiceImpl implements EmailService {
                         L'établissement <strong>%s</strong> (Code : <code>%s</code>) a été enregistré et activé sur Netaa École.
                     </p>
                     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 5px 0;"><strong>Plan Souscrit :</strong> Plan %s (Valable jusqu'au %s)</p>
+                        <p style="margin: 5px 0;"><strong>Plan Souscrit :</strong> %s (Valable jusqu'au %s)</p>
                         <p style="margin: 5px 0; color: #64748b;">Les identifiants de connexion ont été envoyés par e-mail séparément à chaque compte de direction créé pour cet établissement.</p>
                     </div>
                     <p style="font-size: 14px; color: #64748b;">
@@ -246,7 +249,7 @@ public class EmailServiceImpl implements EmailService {
                     &copy; 2026 Netaa École — République du Mali. Tous droits réservés.
                 </div>
             </div>
-            """.formatted(etab.getNom(), etab.getCode(), etab.getPlanTarifaire(), formattedDate, frontendUrl + "/login");
+            """.formatted(etab.getNom(), etab.getCode(), tarifPlanService.obtenirLibelle(etab.getPlanTarifaire()), formattedDate, frontendUrl + "/login");
 
         logger.info("🎉 [ÉTABLISSEMENT] Envoi du reçu PDF et identifiants pour [{}] à [{}]", etab.getNom(), recipient);
         sendMailInternalWithAttachment(recipient, subject, htmlBody, pdfBytes, "Recu_Abonnement_" + etab.getCode() + ".pdf");

@@ -47,6 +47,9 @@ public class NoteServiceImpl implements NoteService {
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
     @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille;
+
+    @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.services.NotificationService notificationService;
 
     /**
@@ -147,6 +150,9 @@ public class NoteServiceImpl implements NoteService {
 
     @Override
     public List<Note> listerNotesEleve(Long eleveId) {
+        if (accesFamille.restreint()) {
+            accesFamille.verifier(eleveRepository.findById(eleveId).orElse(null));
+        }
         return tenantGuard.filterSameNiveau(tenantGuard.filterSameTenant(noteRepository.findByEleveId(eleveId)), this::niveauDe);
     }
 
@@ -176,6 +182,7 @@ public class NoteServiceImpl implements NoteService {
     public Double calculerMoyenneGeneraleEleve(Long eleveId, String periode) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        accesFamille.verifier(eleve);
 
         if (eleve.getClasse() == null) {
             return 0.0;
@@ -228,6 +235,7 @@ public class NoteServiceImpl implements NoteService {
     public Double calculerMoyenneGeneraleAnnuelleEleve(Long eleveId) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
+        accesFamille.verifier(eleve);
 
         if (eleve.getClasse() == null) {
             return 0.0;

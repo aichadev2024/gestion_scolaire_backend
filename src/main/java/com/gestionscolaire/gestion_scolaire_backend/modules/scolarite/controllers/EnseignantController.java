@@ -40,13 +40,13 @@ public class EnseignantController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and !hasAnyRole('PARENT', 'ELEVE')")
     public ResponseEntity<List<EnseignantResponse>> listerTous() {
         return ResponseEntity.ok(enseignantService.listerTous().stream().map(dtoMapper::toEnseignantResponse).toList());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated() and !hasAnyRole('PARENT', 'ELEVE')")
     public ResponseEntity<EnseignantResponse> trouverParId(@PathVariable Long id) {
         Enseignant enseignant = enseignantService.trouverParId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Enseignant introuvable"));

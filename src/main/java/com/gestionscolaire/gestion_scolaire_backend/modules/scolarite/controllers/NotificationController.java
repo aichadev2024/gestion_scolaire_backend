@@ -31,8 +31,10 @@ public class NotificationController {
                 .titre(request.getTitre())
                 .contenu(request.getContenu())
                 .build();
-        Long expediteurId = request.getExpediteurId() != null ? request.getExpediteurId() : SecurityUtils.getCurrentUserId();
-        Notification saved = notificationService.envoyerNotification(notification, expediteurId, request.getDestinataireId());
+        // L'expéditeur est TOUJOURS l'utilisateur connecté : accepter un expediteurId fourni par le
+        // client permettait d'envoyer un message en se faisant passer pour le directeur ou un enseignant.
+        Notification saved = notificationService.envoyerNotification(
+                notification, SecurityUtils.getCurrentUserId(), request.getDestinataireId());
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 

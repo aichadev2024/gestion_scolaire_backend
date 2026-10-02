@@ -44,6 +44,9 @@ public class RapportJournalierServiceImpl implements RapportJournalierService {
     @Autowired
     private com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
 
+    @Autowired
+    private com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille;
+
     @Override
     public RapportJournalier enregistrer(RapportJournalierRequest request) {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(request.getEleveId())
@@ -110,17 +113,7 @@ public class RapportJournalierServiceImpl implements RapportJournalierService {
         Eleve eleve = tenantGuard.requireSameTenant(eleveRepository.findById(eleveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Élève introuvable")));
 
-        try {
-            Utilisateur current = SecurityUtils.getCurrentUser().getUtilisateur();
-            String role = current.getRole() != null ? current.getRole().getNom() : "";
-            if ("PARENT".equalsIgnoreCase(role) && !estParentDe(eleve, current.getId())) {
-                throw new AccessDeniedException("Ce n'est pas l'un de vos enfants.");
-            }
-        } catch (AccessDeniedException ade) {
-            throw ade;
-        } catch (Exception ignored) {
-            // pas de contexte d'authentification exploitable (ex. appel interne)
-        }
+        accesFamille.verifier(eleve); // parent : ses enfants ; élève : lui-même
 
         return rapportRepository.findByEleveIdOrderByDateDesc(eleveId);
     }

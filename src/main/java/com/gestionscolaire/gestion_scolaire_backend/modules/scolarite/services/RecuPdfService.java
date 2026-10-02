@@ -27,21 +27,27 @@ public class RecuPdfService {
     private final PaiementRepository paiementRepository;
     private final com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard;
     private final QrCodeService qrCodeService;
+    private final com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl;
 
     public RecuPdfService(PaiementRepository paiementRepository,
                           com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard tenantGuard,
-                          QrCodeService qrCodeService) {
+                          QrCodeService qrCodeService,
+                          com.gestionscolaire.gestion_scolaire_backend.core.security.AccesFamille accesFamille) {
         this.paiementRepository = paiementRepository;
         this.tenantGuard = tenantGuard;
         this.qrCodeService = qrCodeService;
+        this.accesFamille = accesFamille;
     }
 
     public byte[] genererRecuPdf(String numeroRecu) {
         Paiement paiement = tenantGuard.requireSameTenant(paiementRepository.findByNumeroRecu(numeroRecu)
                 .orElseThrow(() -> new ResourceNotFoundException("Paiement introuvable pour le reçu : " + numeroRecu)));
+        if (paiement.getEleve() != null) {
+            accesFamille.verifier(paiement.getEleve());
+        }
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             Document document = new Document();

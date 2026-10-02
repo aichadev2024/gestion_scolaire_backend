@@ -9,7 +9,7 @@ import lombok.Data;
 public class RenouvellementRequest {
 
     @NotBlank(message = "Le plan tarifaire est obligatoire")
-    private String planTarifaire; // STARTER, PRO
+    private String planTarifaire; // PLAN_200, PLAN_300, ILLIMITE
 
     @Min(value = 1, message = "La durée doit être d'au moins 1 mois")
     private int dureeMois;

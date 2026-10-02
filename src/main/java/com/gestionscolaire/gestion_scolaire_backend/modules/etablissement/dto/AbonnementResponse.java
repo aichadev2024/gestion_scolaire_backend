@@ -5,16 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
+/** Abonnement de l'établissement courant : plan, limite d'élèves et effectif actuel. */
 @Data
 @Builder
 @AllArgsConstructor
-public class TarifPlanResponse {
-    private String code;
+public class AbonnementResponse {
+    private String plan;
     private String libelle;
     private BigDecimal prixMensuel;
-    /** Nombre max d'élèves actifs pour ce plan — null = illimité. */
+    /** null = illimité. */
     private Integer maxEleves;
-    /** Nombre max de comptes enseignants pour ce plan — null = illimité. */
-    private Integer maxEnseignants;
+    private long elevesActifs;
+    private LocalDateTime dateExpiration;
 }
