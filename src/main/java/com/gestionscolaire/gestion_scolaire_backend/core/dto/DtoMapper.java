@@ -103,6 +103,8 @@ public class DtoMapper {
                 .parentId(pId)
                 .profil(toProfilDto(eleve.getProfil()))
                 .etablissementNom(etabNom)
+                .arrieresMontant(eleve.getArrieresMontant())
+                .arrieresLibelle(eleve.getArrieresLibelle())
                 .build();
     }
 

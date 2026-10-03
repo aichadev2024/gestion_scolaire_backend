@@ -39,6 +39,8 @@ public class EleveController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EleveResponse> inscrire(@Valid @RequestBody EleveInscriptionRequest request) {
         Eleve eleve = Eleve.builder().build();
+        eleve.setArrieresMontant(request.getArrieresMontant() != null && request.getArrieresMontant() > 0 ? request.getArrieresMontant() : null);
+        eleve.setArrieresLibelle(request.getArrieresLibelle());
         Profil profil = dtoMapper.toProfil(request.getProfil());
         String motDePasseInitial = com.gestionscolaire.gestion_scolaire_backend.core.security.PasswordGenerator.generer();
         Eleve saved = eleveService.inscrireEleve(eleve, profil, request.getParentId(), request.getClasseId(), motDePasseInitial);
@@ -77,6 +79,8 @@ public class EleveController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'SECRETAIRE')")
     public ResponseEntity<EleveResponse> modifier(@PathVariable Long id, @Valid @RequestBody EleveInscriptionRequest request) {
         Eleve eleveDetails = Eleve.builder().build();
+        eleveDetails.setArrieresMontant(request.getArrieresMontant());
+        eleveDetails.setArrieresLibelle(request.getArrieresLibelle());
         if (request.getClasseId() != null) {
             eleveDetails.setClasse(com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe.builder().id(request.getClasseId()).build());
         }

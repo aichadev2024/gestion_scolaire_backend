@@ -208,6 +208,7 @@ public class PaiementServiceImpl implements PaiementService {
         List<FraisScolarite> frais = eleve.getClasse() == null ? new java.util.ArrayList<>()
                 : new java.util.ArrayList<>(fraisScolariteRepository.findByClasseId(eleve.getClasse().getId()));
         frais.sort(java.util.Comparator.comparing(FraisScolarite::getDateEcheance));
+        double arrieres = eleve.getArrieresMontant() != null && eleve.getArrieresMontant() > 0 ? eleve.getArrieresMontant() : 0;
 
         // Paiements rattachés à un frais précis ; le crédit libre (sans frais) couvre les échéances les plus anciennes.
         java.util.Map<Long, Double> payeParFrais = new java.util.HashMap<>();
@@ -222,6 +223,22 @@ public class PaiementServiceImpl implements PaiementService {
         List<com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse.LigneFrais> lignes = new java.util.ArrayList<>();
         double totalDu = 0;
         double totalPaye = 0;
+
+        // Arriérés des années précédentes : dette la plus ancienne, donc soldée en premier par le
+        // crédit libre (paiement global), avant toute échéance de l'année en cours.
+        if (arrieres > 0) {
+            double payeArrieres = Math.min(libre, arrieres);
+            libre -= payeArrieres;
+            double resteArrieres = arrieres - payeArrieres;
+            totalDu += arrieres;
+            totalPaye += payeArrieres;
+            String libelleArrieres = eleve.getArrieresLibelle() != null && !eleve.getArrieresLibelle().isBlank()
+                    ? eleve.getArrieresLibelle() : "Arriérés des années précédentes";
+            lignes.add(new com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse.LigneFrais(
+                    null, libelleArrieres, "ARRIERES", arrieres, payeArrieres, resteArrieres, null,
+                    resteArrieres <= 0 ? "PAYE" : payeArrieres > 0 ? "PARTIEL" : "EN_RETARD"));
+        }
+
         for (FraisScolarite f : frais) {
             double paye = payeParFrais.getOrDefault(f.getId(), 0.0);
             double manque = Math.max(0, f.getMontant() - paye);
@@ -250,9 +267,9 @@ public class PaiementServiceImpl implements PaiementService {
         double reste = Math.max(0, totalDu - totalPaye);
         // Tant que l'école n'a enregistré que l'inscription, le reste de la scolarité (mensualités,
         // tranches…) n'est pas connu : on ne peut donc pas déclarer l'année « toute payée ».
-        boolean scolariteDefinie = lignes.stream().anyMatch(l -> !"INSCRIPTION".equals(l.type()));
+        boolean scolariteDefinie = lignes.stream().anyMatch(l -> !"INSCRIPTION".equals(l.type()) && !"ARRIERES".equals(l.type()));
         return new com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.SituationFinanciereResponse(
-                devise, totalDu, totalPaye, reste, frais.isEmpty(), scolariteDefinie && reste <= 0,
+                devise, totalDu, totalPaye, reste, frais.isEmpty() && arrieres <= 0, scolariteDefinie && reste <= 0,
                 scolariteDefinie, Math.max(0, libre), lignes, recus);
     }
 
@@ -308,7 +325,8 @@ public class PaiementServiceImpl implements PaiementService {
 
         // Somme des frais de scolarité de sa classe
         List<FraisScolarite> fraisClasse = fraisScolariteRepository.findByClasseId(eleve.getClasse().getId());
-        double totalFrais = fraisClasse.stream().mapToDouble(FraisScolarite::getMontant).sum();
+        double totalFrais = fraisClasse.stream().mapToDouble(FraisScolarite::getMontant).sum()
+                + (eleve.getArrieresMontant() != null ? eleve.getArrieresMontant() : 0);
 
         // Somme des paiements déjà effectués par cet élève
         List<Paiement> paiementsEleve = paiementRepository.findByEleveId(eleveId);
@@ -339,7 +357,8 @@ public class PaiementServiceImpl implements PaiementService {
                     .toList();
             if (fraisEchus.isEmpty()) continue;
 
-            double montantEchu = fraisEchus.stream().mapToDouble(FraisScolarite::getMontant).sum();
+            double montantEchu = fraisEchus.stream().mapToDouble(FraisScolarite::getMontant).sum()
+                    + (eleve.getArrieresMontant() != null ? eleve.getArrieresMontant() : 0);
             double totalPaye = paiementRepository.findByEleveId(eleve.getId()).stream()
                     .mapToDouble(Paiement::getMontantPaye).sum();
             double resteDu = montantEchu - totalPaye;

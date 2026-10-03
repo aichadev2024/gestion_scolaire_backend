@@ -21,6 +21,8 @@ public class EleveResponse {
     private Long parentId;
     private ProfilDto profil;
     private String etablissementNom;
+    private Double arrieresMontant;
+    private String arrieresLibelle;
     /** Renseigné uniquement dans la réponse de création : mot de passe initial à transmettre à l'utilisateur. */
     private String motDePasseInitial;
 }

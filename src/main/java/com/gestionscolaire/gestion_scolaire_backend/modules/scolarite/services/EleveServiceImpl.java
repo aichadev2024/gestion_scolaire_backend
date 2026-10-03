@@ -235,6 +235,14 @@ public class EleveServiceImpl implements EleveService {
             eleve.setParent(resoudreParent(eleveDetails.getParent().getId()));
         }
 
+        // Arriérés : null = inchangé ; 0 = effacer (les deux champs sont alors vidés).
+        if (eleveDetails.getArrieresMontant() != null) {
+            double m = eleveDetails.getArrieresMontant();
+            eleve.setArrieresMontant(m > 0 ? m : null);
+            String lib = eleveDetails.getArrieresLibelle();
+            eleve.setArrieresLibelle(m > 0 && lib != null && !lib.isBlank() ? lib.trim() : null);
+        }
+
         return eleveRepository.save(eleve);
     }
 
@@ -429,6 +437,7 @@ public class EleveServiceImpl implements EleveService {
     private static final int COL_EMAIL_ELEVE = 5;
     private static final int COL_CLASSE = 6;
     private static final int COL_TELEPHONE_PARENT = 7;
+    private static final int COL_ARRIERES = 8;
 
     // Synonymes reconnus par champ (comparés après suppression des accents et mise en
     // minuscule) — permet d'importer un fichier que l'école a DÉJÀ, avec ses propres
@@ -445,6 +454,15 @@ public class EleveServiceImpl implements EleveService {
     // Volontairement sans synonyme générique ("telephone" seul) : une colonne "Téléphone"
     // ambiguë doit toujours être comprise comme celle de l'élève, pas du parent.
     private static final java.util.List<String> SYN_TELEPHONE_PARENT = java.util.List.of("telephone du parent", "telephone parent", "tel parent", "contact parent", "numero parent");
+
+    private static final java.util.List<String> SYN_ARRIERES = java.util.List.of("arrieres", "arriere", "reliquat", "solde anterieur", "dette", "impaye");
+
+    /** Montant entier en FCFA lu dans une cellule libre (« 150 000 », « 150000 FCFA »…) ; null si vide. */
+    private static Double lireMontantFcfa(String brut) {
+        if (brut == null) return null;
+        String chiffres = brut.replaceAll("[^0-9]", "");
+        return chiffres.isEmpty() ? null : Double.valueOf(chiffres);
+    }
 
     /** Accents retirés, minuscules, espaces normalisés — pour comparer des libellés d'en-tête. */
     private static String normaliserEntete(String s) {
@@ -521,6 +539,8 @@ public class EleveServiceImpl implements EleveService {
             // si l'élève cherchait en premier, il pourrait voler la colonne du parent.
             int colTelephoneParent = resoudreColonne(ligneEntete, formatter, SYN_TELEPHONE_PARENT, colonnesAttribuees, COL_TELEPHONE_PARENT);
             int colTelephoneEleve = resoudreColonne(ligneEntete, formatter, SYN_TELEPHONE_ELEVE, colonnesAttribuees, COL_TELEPHONE_ELEVE);
+            // Facultatif : sans en-tête reconnu, la colonne est considérée absente (jamais devinée par position).
+            int colArrieres = resoudreColonne(ligneEntete, formatter, SYN_ARRIERES, colonnesAttribuees, -1);
 
             for (int i = 1; i <= derniereLigne; i++) {
                 Row row = sheet.getRow(i);
@@ -570,6 +590,11 @@ public class EleveServiceImpl implements EleveService {
                             .build();
 
                     Eleve eleve = Eleve.builder().build();
+                    Double arrieres = lireMontantFcfa(valeurCellule(row, colArrieres, formatter));
+                    if (arrieres != null && arrieres > 0) {
+                        eleve.setArrieresMontant(arrieres);
+                        eleve.setArrieresLibelle("Arriérés des années précédentes");
+                    }
                     String motDePasse = com.gestionscolaire.gestion_scolaire_backend.core.security.PasswordGenerator.generer();
 
                     Eleve saved = inscrireEleve(
@@ -626,7 +651,7 @@ public class EleveServiceImpl implements EleveService {
             Sheet sheet = workbook.createSheet("Élèves");
             String[] entetes = {
                     "Prénom", "Nom", "Genre (M/F)", "Date de naissance (JJ/MM/AAAA)",
-                    "Téléphone élève", "Email élève", "Classe", "Téléphone du parent"
+                    "Téléphone élève", "Email élève", "Classe", "Téléphone du parent", "Arriérés (FCFA)"
             };
             Row header = sheet.createRow(0);
             for (int i = 0; i < entetes.length; i++) {
@@ -637,7 +662,7 @@ public class EleveServiceImpl implements EleveService {
             Row exemple = sheet.createRow(1);
             String[] valeursExemple = {
                     "Fatoumata", "Diarra", "F", "12/03/2015",
-                    "", "", "6ème A", "+223 70 00 00 00"
+                    "", "", "6ème A", "+223 70 00 00 00", "0"
             };
             for (int i = 0; i < valeursExemple.length; i++) {
                 exemple.createCell(i).setCellValue(valeursExemple[i]);

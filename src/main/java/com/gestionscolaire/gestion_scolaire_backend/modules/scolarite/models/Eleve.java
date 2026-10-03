@@ -68,6 +68,14 @@ public class Eleve implements TenantScoped {
     @Column(name = "statut_pedagogique", length = 20)
     private String statutPedagogique = "REGULIER";
 
+    /** Reliquat des années précédentes que l'élève doit encore (arriérés), en FCFA — null ou 0 = aucun. */
+    @Column(name = "arrieres_montant")
+    private Double arrieresMontant;
+
+    /** Intitulé affiché pour ce reliquat (ex. « Arriérés 2025-2026 »). */
+    @Column(name = "arrieres_libelle", length = 100)
+    private String arrieresLibelle;
+
     /** Non persisté : mot de passe initial généré à l'inscription, renvoyé une seule fois à l'admin. */
     @Transient
     private String motDePasseInitial;
