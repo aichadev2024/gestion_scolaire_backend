@@ -76,6 +76,10 @@ public class Eleve implements TenantScoped {
     @Column(name = "arrieres_libelle", length = 100)
     private String arrieresLibelle;
 
+    /** Dernière relance de paiement envoyée aux parents (null = jamais relancé). */
+    @Column(name = "derniere_relance_paiement")
+    private java.time.LocalDateTime derniereRelancePaiement;
+
     /** Non persisté : mot de passe initial généré à l'inscription, renvoyé une seule fois à l'admin. */
     @Transient
     private String motDePasseInitial;

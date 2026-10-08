@@ -1,6 +1,7 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.services;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.RelancePaiementResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.RetardPaiementResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.*;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.*;
@@ -387,11 +388,91 @@ public class PaiementServiceImpl implements PaiementService {
                     .montantDu(resteDu)
                     .echeanceLaPlusAncienne(echeanceLaPlusAncienne)
                     .joursRetard(joursRetard)
+                    .parentJoignable(!comptesParents(eleve).isEmpty())
+                    .derniereRelance(eleve.getDerniereRelancePaiement())
                     .build());
         }
 
         retards.sort((a, b) -> Long.compare(b.getJoursRetard(), a.getJoursRetard()));
         return retards;
+    }
+
+    /** Une même famille n'est pas relancée plus d'une fois dans cet intervalle. */
+    static final int JOURS_ENTRE_RELANCES = 3;
+
+    /** Comptes utilisateur du parent principal et du parent secondaire (ceux qui n'en ont pas sont ignorés). */
+    private static List<Utilisateur> comptesParents(Eleve eleve) {
+        return java.util.stream.Stream.of(eleve.getParent(), eleve.getParentSecondaire())
+                .filter(p -> p != null && p.getProfil() != null && p.getProfil().getUtilisateur() != null)
+                .map(p -> p.getProfil().getUtilisateur())
+                .toList();
+    }
+
+    @Override
+    public RelancePaiementResponse relancerRetards(List<Long> eleveIds) {
+        java.util.Set<Long> demandes = eleveIds == null ? java.util.Set.of() : new java.util.HashSet<>(eleveIds);
+        Long expediteurId = com.gestionscolaire.gestion_scolaire_backend.core.security.SecurityUtils.getCurrentUserId();
+        java.time.LocalDateTime maintenant = java.time.LocalDateTime.now();
+
+        int envoyees = 0, sansCompte = 0, dejaRelances = 0;
+        // listerRetardsPaiement() applique déjà l'établissement et le niveau de l'appelant : on ne
+        // peut donc relancer que des élèves que cet utilisateur voit en retard.
+        for (RetardPaiementResponse retard : listerRetardsPaiement()) {
+            if (!demandes.isEmpty() && !demandes.contains(retard.getEleveId())) continue;
+
+            Eleve eleve = eleveRepository.findById(retard.getEleveId()).orElse(null);
+            if (eleve == null) continue;
+
+            List<Utilisateur> comptes = comptesParents(eleve);
+            if (comptes.isEmpty()) {
+                sansCompte++;
+                continue;
+            }
+            java.time.LocalDateTime derniere = eleve.getDerniereRelancePaiement();
+            if (derniere != null && derniere.isAfter(maintenant.minusDays(JOURS_ENTRE_RELANCES))) {
+                dejaRelances++;
+                continue;
+            }
+
+            String contenu = messageRelance(eleve, retard);
+            boolean notifie = false;
+            for (Utilisateur compte : comptes) {
+                try {
+                    notificationService.envoyerNotification(
+                            Notification.builder().titre("Rappel de paiement").contenu(contenu).build(),
+                            expediteurId, compte.getId());
+                    notifie = true;
+                } catch (Exception e) {
+                    log.warn("Relance de paiement non envoyée au compte {} (élève {}) : {}",
+                            compte.getId(), eleve.getId(), e.getMessage());
+                }
+            }
+            if (notifie) {
+                eleve.setDerniereRelancePaiement(maintenant);
+                eleveRepository.save(eleve);
+                envoyees++;
+            }
+        }
+        return new RelancePaiementResponse(envoyees, sansCompte, dejaRelances);
+    }
+
+    private static String messageRelance(Eleve eleve, RetardPaiementResponse retard) {
+        String devise = "FCFA";
+        if (eleve.getEtablissement() != null && eleve.getEtablissement().getDevise() != null
+                && !eleve.getEtablissement().getDevise().isBlank()) {
+            devise = eleve.getEtablissement().getDevise();
+        }
+        java.text.DecimalFormatSymbols symbols = new java.text.DecimalFormatSymbols(java.util.Locale.FRANCE);
+        symbols.setGroupingSeparator(' ');
+        String montant = new java.text.DecimalFormat("#,##0.##", symbols).format(retard.getMontantDu()) + " " + devise;
+        String nomEleve = eleve.getProfil() != null
+                ? (eleve.getProfil().getPrenom() + " " + eleve.getProfil().getNom()).trim()
+                : "votre enfant";
+        String echeance = retard.getEcheanceLaPlusAncienne()
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        return String.format("Les frais de scolarité de %s (%s) présentent un solde de %s, échu depuis le %s. "
+                        + "Merci de régulariser auprès de l'établissement. Si vous avez déjà payé, ignorez ce message.",
+                nomEleve, retard.getClasseNom(), montant, echeance);
     }
 }
 

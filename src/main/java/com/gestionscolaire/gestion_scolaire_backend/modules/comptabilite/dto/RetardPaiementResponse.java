@@ -25,4 +25,8 @@ public class RetardPaiementResponse {
     private Double montantDu;
     private LocalDate echeanceLaPlusAncienne;
     private Long joursRetard;
+    /** Au moins un parent a un compte : la relance (notification + push) peut lui parvenir. */
+    private Boolean parentJoignable;
+    /** Dernière relance envoyée, null si jamais relancé. */
+    private java.time.LocalDateTime derniereRelance;
 }

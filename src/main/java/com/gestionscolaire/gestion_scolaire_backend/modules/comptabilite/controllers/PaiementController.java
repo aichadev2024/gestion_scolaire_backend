@@ -1,6 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.controllers;
 
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.PaiementRequest;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.RelancePaiementRequest;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.RelancePaiementResponse;
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.dto.RetardPaiementResponse;
 import com.gestionscolaire.gestion_scolaire_backend.core.exceptions.ResourceNotFoundException;
 import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.models.Paiement;
@@ -77,6 +79,13 @@ public class PaiementController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE')")
     public ResponseEntity<List<RetardPaiementResponse>> listerRetards() {
         return ResponseEntity.ok(paiementService.listerRetardsPaiement());
+    }
+
+    /** Envoie un rappel de paiement aux parents des élèves en retard (tous, ou ceux listés dans {@code eleveIds}). */
+    @PostMapping("/retards/relancer")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'DIRECTEUR', 'COMPTABLE')")
+    public ResponseEntity<RelancePaiementResponse> relancer(@RequestBody(required = false) RelancePaiementRequest request) {
+        return ResponseEntity.ok(paiementService.relancerRetards(request != null ? request.getEleveIds() : null));
     }
 
     @GetMapping("/recu/{numeroRecu}/pdf")
