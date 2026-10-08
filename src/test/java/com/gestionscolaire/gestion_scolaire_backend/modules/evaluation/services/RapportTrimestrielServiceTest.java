@@ -1,6 +1,8 @@
 package com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.services;
 
 import com.gestionscolaire.gestion_scolaire_backend.core.tenancy.TenantGuard;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.models.Paiement;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.repositories.PaiementRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.models.Etablissement;
 import com.gestionscolaire.gestion_scolaire_backend.modules.etablissement.repositories.EtablissementRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.dto.RapportTrimestrielResponse;
@@ -12,13 +14,16 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.Uti
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.ClasseMatiere;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.FraisScolarite;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Matiere;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Presence;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseMatiereRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.FraisScolariteRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.IncidentDisciplineRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.PresenceRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,11 +32,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,6 +66,8 @@ class RapportTrimestrielServiceTest {
     @Mock private IncidentDisciplineRepository incidentRepository;
     @Mock private RapportTrimestrielRepository rapportRepository;
     @Mock private UtilisateurRepository utilisateurRepository;
+    @Mock private FraisScolariteRepository fraisRepository;
+    @Mock private PaiementRepository paiementRepository;
 
     private RapportTrimestrielServiceImpl service;
     private Classe classe;
@@ -68,7 +81,7 @@ class RapportTrimestrielServiceTest {
     void preparer() {
         service = new RapportTrimestrielServiceImpl(tenantGuard, etablissementRepository, classeRepository,
                 classeMatiereRepository, eleveRepository, noteRepository, presenceRepository, incidentRepository,
-                rapportRepository, utilisateurRepository);
+                rapportRepository, utilisateurRepository, fraisRepository, paiementRepository);
 
         Etablissement etab = Etablissement.builder().id(1L).nom("Lycée Test").rive("RIVE GAUCHE").cap("CAP de Bamako-Centre").build();
         when(tenantGuard.requireEtablissementId()).thenReturn(1L);
@@ -95,9 +108,29 @@ class RapportTrimestrielServiceTest {
         when(presenceRepository.findByEtablissementIdAndDateBetween(anyLong(), any(), any())).thenReturn(List.of(
                 presence(awa, "PRESENT", false), presence(awa, "RETARD", false),
                 presence(moussa, "ABSENT", true), presence(moussa, "ABSENT", false)));
+        // Frais de la classe : inscription 20 000 (échue) + scolarité 50 000 (à venir)
+        when(fraisRepository.findByClasseId(5L)).thenReturn(List.of(
+                FraisScolarite.builder().id(1L).classe(classe).titre("Inscription").montant(20000.0)
+                        .dateEcheance(LocalDate.now().minusDays(30)).build(),
+                FraisScolarite.builder().id(2L).classe(classe).titre("Scolarité").montant(50000.0)
+                        .dateEcheance(LocalDate.now().plusDays(60)).build()));
+        moussa.setArrieresMontant(10000.0);
+        when(paiementRepository.findByEleveIdIn(anyCollection())).thenReturn(List.of(
+                Paiement.builder().eleve(awa).montantPaye(20000.0).datePaiement(LocalDateTime.of(2026, 11, 10, 9, 0)).build(),
+                Paiement.builder().eleve(moussa).montantPaye(5000.0).datePaiement(LocalDateTime.of(2026, 11, 12, 9, 0)).build()));
         when(incidentRepository.findByEtablissementIdAndDateBetween(anyLong(), any(), any())).thenReturn(List.of());
         when(rapportRepository.findByEtablissementIdAndClasseIdAndPeriodeAndAnneeScolaire(anyLong(), anyLong(), anyString(), anyString()))
                 .thenReturn(Optional.empty());
+    }
+
+    @AfterEach
+    void nettoyer() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void commeDirecteur() {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                "directeur", null, List.of(new SimpleGrantedAuthority("ROLE_DIRECTEUR"))));
     }
 
     private Eleve eleve(long id, String genre, String nom, String prenom) {
@@ -174,5 +207,29 @@ class RapportTrimestrielServiceTest {
         assertEquals("Classe de 10ème CG1", r.portee());
         assertNull(r.commentaire());
         assertTrue(r.classes().isEmpty());
+    }
+
+    @Test
+    void finances_reserveesALaDirection() {
+        assertNull(service.generer(5L, "TRIMESTRE_1", "2026/2027", null, null).finances(),
+                "sans rôle directeur, aucun chiffre financier");
+    }
+
+    @Test
+    void finances_attenduEncaisseEtRetards() {
+        commeDirecteur();
+
+        var f = service.generer(5L, "TRIMESTRE_1", "2026/2027", null, null).finances();
+
+        assertNotNull(f);
+        assertEquals(220000.0, f.attendu());          // 3 x 70 000 + 10 000 d'arriérés
+        assertEquals(25000.0, f.encaisse());
+        assertEquals(195000.0, f.reste());
+        assertEquals(11.36, f.tauxRecouvrement());
+        assertEquals(10000.0, f.arrieres());
+        assertEquals(45000.0, f.montantEnRetard());    // Moussa 30 000 - 5 000 ; Oumar 20 000 ; Awa soldée
+        assertEquals(2, f.elevesEnRetard());
+        assertEquals(25000.0, f.encaisseSurPeriode());
+        assertEquals("FCFA", f.devise());
     }
 }

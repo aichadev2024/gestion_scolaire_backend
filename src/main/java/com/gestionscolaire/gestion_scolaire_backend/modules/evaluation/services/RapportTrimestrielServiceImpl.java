@@ -15,16 +15,22 @@ import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.repositor
 import com.gestionscolaire.gestion_scolaire_backend.modules.evaluation.repositories.RapportTrimestrielRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.models.Profil;
 import com.gestionscolaire.gestion_scolaire_backend.modules.iam.repositories.UtilisateurRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.models.Paiement;
+import com.gestionscolaire.gestion_scolaire_backend.modules.comptabilite.repositories.PaiementRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Classe;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.ClasseMatiere;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Eleve;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.FraisScolarite;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.IncidentDiscipline;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.models.Presence;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseMatiereRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.ClasseRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.EleveRepository;
+import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.FraisScolariteRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.IncidentDisciplineRepository;
 import com.gestionscolaire.gestion_scolaire_backend.modules.scolarite.repositories.PresenceRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,12 +59,15 @@ public class RapportTrimestrielServiceImpl implements RapportTrimestrielService 
     private final IncidentDisciplineRepository incidentRepository;
     private final RapportTrimestrielRepository rapportRepository;
     private final UtilisateurRepository utilisateurRepository;
+    private final FraisScolariteRepository fraisRepository;
+    private final PaiementRepository paiementRepository;
 
     public RapportTrimestrielServiceImpl(TenantGuard tenantGuard, EtablissementRepository etablissementRepository,
                                          ClasseRepository classeRepository, ClasseMatiereRepository classeMatiereRepository,
                                          EleveRepository eleveRepository, NoteRepository noteRepository,
                                          PresenceRepository presenceRepository, IncidentDisciplineRepository incidentRepository,
-                                         RapportTrimestrielRepository rapportRepository, UtilisateurRepository utilisateurRepository) {
+                                         RapportTrimestrielRepository rapportRepository, UtilisateurRepository utilisateurRepository,
+                                         FraisScolariteRepository fraisRepository, PaiementRepository paiementRepository) {
         this.tenantGuard = tenantGuard;
         this.etablissementRepository = etablissementRepository;
         this.classeRepository = classeRepository;
@@ -69,6 +78,8 @@ public class RapportTrimestrielServiceImpl implements RapportTrimestrielService 
         this.incidentRepository = incidentRepository;
         this.rapportRepository = rapportRepository;
         this.utilisateurRepository = utilisateurRepository;
+        this.fraisRepository = fraisRepository;
+        this.paiementRepository = paiementRepository;
     }
 
     private static Integer niveauDe(Classe c) {
@@ -162,6 +173,12 @@ public class RapportTrimestrielServiceImpl implements RapportTrimestrielService 
                 ? lignesMatieres(eleves, notes, matieresParClasse.get(classeChoisie.getId()))
                 : List.of();
 
+        // Finances : réservées à la direction (le secrétariat n'a pas accès aux paiements)
+        Map<Long, double[]> financesParClasse = new HashMap<>();
+        Finances finances = peutVoirFinances()
+                ? calculerFinances(etab, classes, eleves, dateDebut, dateFin, financesParClasse)
+                : null;
+
         List<LigneClasse> lignesClasses = classeChoisie != null ? List.of() : classes.stream()
                 .sorted(Comparator.comparing(Classe::getNom, String.CASE_INSENSITIVE_ORDER))
                 .map(c -> {
@@ -169,7 +186,8 @@ public class RapportTrimestrielServiceImpl implements RapportTrimestrielService 
                     List<Double> mm = deLaClasse.stream().map(e -> moyennes.get(e.getId())).filter(Objects::nonNull).toList();
                     return new LigneClasse(c.getId(), c.getNom(), deLaClasse.size(), mm.size(), moyenneOuNull(mm),
                             tauxReussite(mm),
-                            tauxPresence(presences.stream().filter(p -> c.getId().equals(classeDeLEleve.get(p.getEleve().getId()))).toList()));
+                            tauxPresence(presences.stream().filter(p -> c.getId().equals(classeDeLEleve.get(p.getEleve().getId()))).toList()),
+                            finances == null ? null : tauxRecouvrement(financesParClasse.get(c.getId())));
                 })
                 .toList();
 
@@ -205,7 +223,8 @@ public class RapportTrimestrielServiceImpl implements RapportTrimestrielService 
                         tauxReussite(toutes), mentions(toutes)),
                 lignesMatieres, lignesClasses, meilleurs, enDifficulte,
                 new Discipline(incidents.size(), parStatut,
-                        (int) incidents.stream().filter(i -> !Boolean.TRUE.equals(i.getEstTraite())).count()));
+                        (int) incidents.stream().filter(i -> !Boolean.TRUE.equals(i.getEstTraite())).count()),
+                finances);
     }
 
     @Override
@@ -230,6 +249,62 @@ public class RapportTrimestrielServiceImpl implements RapportTrimestrielService 
     }
 
     // ───────────── calculs ─────────────
+
+    private static boolean peutVoirFinances() {
+        Authentication a = SecurityContextHolder.getContext().getAuthentication();
+        return a != null && a.getAuthorities().stream().anyMatch(g -> "ROLE_DIRECTEUR".equals(g.getAuthority()));
+    }
+
+    /** {@code parClasse} reçoit, par classe, {attendu, encaissé} pour le taux de recouvrement de chaque ligne. */
+    private Finances calculerFinances(Etablissement etab, List<Classe> classes, List<Eleve> eleves,
+                                      LocalDate debut, LocalDate fin, Map<Long, double[]> parClasse) {
+        LocalDate aujourdHui = LocalDate.now();
+        Map<Long, List<FraisScolarite>> fraisParClasse = new HashMap<>();
+        for (Classe c : classes) fraisParClasse.put(c.getId(), fraisRepository.findByClasseId(c.getId()));
+
+        Map<Long, Double> payeParEleve = new HashMap<>();
+        double encaisseSurPeriode = 0;
+        if (!eleves.isEmpty()) {
+            Set<Long> ids = eleves.stream().map(Eleve::getId).collect(Collectors.toSet());
+            for (Paiement p : paiementRepository.findByEleveIdIn(ids)) {
+                double m = p.getMontantPaye() != null ? p.getMontantPaye() : 0;
+                payeParEleve.merge(p.getEleve().getId(), m, Double::sum);
+                LocalDate jour = p.getDatePaiement() != null ? p.getDatePaiement().toLocalDate() : null;
+                if (jour != null && !jour.isBefore(debut) && !jour.isAfter(fin)) encaisseSurPeriode += m;
+            }
+        }
+
+        double attendu = 0, encaisse = 0, arrieres = 0, enRetard = 0;
+        int elevesEnRetard = 0;
+        for (Eleve e : eleves) {
+            List<FraisScolarite> frais = fraisParClasse.getOrDefault(e.getClasse().getId(), List.of());
+            double arr = e.getArrieresMontant() != null ? e.getArrieresMontant() : 0;
+            double du = frais.stream().mapToDouble(f -> f.getMontant() != null ? f.getMontant() : 0).sum() + arr;
+            double paye = payeParEleve.getOrDefault(e.getId(), 0.0);
+            // Même règle que la liste des retards : échéance dépassée d'au moins un jour, arriérés compris
+            double echu = frais.stream().filter(f -> f.getDateEcheance() != null && f.getDateEcheance().isBefore(aujourdHui))
+                    .mapToDouble(f -> f.getMontant() != null ? f.getMontant() : 0).sum() + arr;
+            boolean aUneEcheance = frais.stream().anyMatch(f -> f.getDateEcheance() != null && f.getDateEcheance().isBefore(aujourdHui));
+            double retard = aUneEcheance ? Math.max(0, echu - paye) : 0;
+
+            attendu += du;
+            encaisse += paye;
+            arrieres += arr;
+            enRetard += retard;
+            if (retard > 0.009) elevesEnRetard++;
+            double[] cumul = parClasse.computeIfAbsent(e.getClasse().getId(), k -> new double[2]);
+            cumul[0] += du;
+            cumul[1] += paye;
+        }
+        String devise = etab.getDevise() != null && !etab.getDevise().isBlank() ? etab.getDevise() : "FCFA";
+        return new Finances(devise, r2(attendu), r2(encaisse), r2(Math.max(0, attendu - encaisse)),
+                attendu <= 0 ? null : r2(100.0 * Math.min(encaisse, attendu) / attendu),
+                r2(arrieres), r2(enRetard), elevesEnRetard, r2(encaisseSurPeriode));
+    }
+
+    private static Double tauxRecouvrement(double[] cumul) {
+        return cumul == null || cumul[0] <= 0 ? null : r2(100.0 * Math.min(cumul[1], cumul[0]) / cumul[0]);
+    }
 
     private List<LigneMatiere> lignesMatieres(List<Eleve> eleves, Map<Long, Map<Long, List<Double>>> notes,
                                               List<ClasseMatiere> matieres) {
