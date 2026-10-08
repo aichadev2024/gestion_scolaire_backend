@@ -24,4 +24,8 @@ public class ModifierEtablissementRequest {
 
     /** Nom propre de l'enseignement professionnel (ex. « IFTICA »). null = inchangé ; vide = retirer le nom propre. */
     private String nomEnseignementProfessionnel;
+
+    /** En-tête officiel : rive (ex. « RIVE GAUCHE ») et CAP. null = inchangé ; vide = effacer. */
+    private String rive;
+    private String cap;
 }

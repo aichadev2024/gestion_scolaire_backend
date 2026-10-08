@@ -61,6 +61,14 @@ public class Etablissement {
     @Column(name = "nom_enseignement_professionnel", length = 100)
     private String nomEnseignementProfessionnel;
 
+    /** Direction régionale pour l'en-tête officiel, ex. « RIVE GAUCHE » (affiché « BAMAKO RIVE GAUCHE »). Facultatif. */
+    @Column(length = 50)
+    private String rive;
+
+    /** Centre d'animation pédagogique, ex. « CAP de Bamako-Centre ». Facultatif. */
+    @Column(length = 100)
+    private String cap;
+
     @Column(name = "plan_tarifaire", length = 50)
     @Builder.Default
     private String planTarifaire = "STARTER";

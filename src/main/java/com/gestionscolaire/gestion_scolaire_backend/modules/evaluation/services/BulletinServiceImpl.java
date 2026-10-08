@@ -176,6 +176,8 @@ public class BulletinServiceImpl implements BulletinService {
                 .eleveMatricule(eleve.getMatricule())
                 .classeId(eleve.getClasse() != null ? eleve.getClasse().getId() : null)
                 .classeNom(eleve.getClasse() != null ? eleve.getClasse().getNom() : null)
+                .etablissementRive(eleve.getEtablissement() != null ? eleve.getEtablissement().getRive() : null)
+                .etablissementCap(eleve.getEtablissement() != null ? eleve.getEtablissement().getCap() : null)
                 .periode(periode)
                 .anneeScolaire(anneeScolaire)
                 .moyenneGenerale(bulletin != null ? bulletin.getMoyenneGenerale() : null)

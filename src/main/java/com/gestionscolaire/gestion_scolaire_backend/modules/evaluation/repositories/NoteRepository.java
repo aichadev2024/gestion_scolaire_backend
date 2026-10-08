@@ -9,6 +9,7 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     List<Note> findByEtablissementId(Long etablissementId);
     List<Note> findByClasseMatiereId(Long classeMatiereId);
     List<Note> findByEleveIdAndClasseMatiereId(Long eleveId, Long classeMatiereId);
+    List<Note> findByEleveIdInAndPeriodeIgnoreCase(java.util.Collection<Long> eleveIds, String periode);
 }
 
 

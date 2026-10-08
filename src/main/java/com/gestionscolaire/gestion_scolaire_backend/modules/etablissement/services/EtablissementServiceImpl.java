@@ -206,6 +206,12 @@ public class EtablissementServiceImpl implements EtablissementService {
         if (request.getNomEnseignementProfessionnel() != null) {
             etablissement.setNomEnseignementProfessionnel(nettoyerNom(request.getNomEnseignementProfessionnel()));
         }
+        if (request.getRive() != null) {
+            etablissement.setRive(nettoyerNom(request.getRive()));
+        }
+        if (request.getCap() != null) {
+            etablissement.setCap(nettoyerNom(request.getCap()));
+        }
         // null = ne pas toucher aux niveaux actuels ; [] explicite = supprimer toute restriction ;
         // liste non vide = remplace intégralement (voir doc du champ dans ModifierEtablissementRequest).
         if (request.getNiveauIds() != null) {
@@ -283,6 +289,8 @@ public class EtablissementServiceImpl implements EtablissementService {
                 .devise(etablissement.getDevise())
                 .slogan(etablissement.getSlogan())
                 .nomEnseignementProfessionnel(etablissement.getNomEnseignementProfessionnel())
+                .rive(etablissement.getRive())
+                .cap(etablissement.getCap())
                 .typeEtablissement(etablissement.getTypeEtablissement())
                 .statut(etablissement.getStatut())
                 .planTarifaire(etablissement.getPlanTarifaire())

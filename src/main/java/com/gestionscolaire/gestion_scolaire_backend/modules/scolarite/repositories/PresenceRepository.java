@@ -8,6 +8,7 @@ import java.util.List;
 public interface PresenceRepository extends JpaRepository<Presence, Long> {
     List<Presence> findByEleveId(Long eleveId);
     List<Presence> findByEtablissementId(Long etablissementId);
+    List<Presence> findByEtablissementIdAndDateBetween(Long etablissementId, LocalDate debut, LocalDate fin);
     List<Presence> findByEleveIdAndDate(Long eleveId, LocalDate date);
     List<Presence> findByClasseMatiereIdAndDate(Long classeMatiereId, LocalDate date);
     // List (pas Optional) : avant le correctif d'idempotence, chaque revalidation d'un

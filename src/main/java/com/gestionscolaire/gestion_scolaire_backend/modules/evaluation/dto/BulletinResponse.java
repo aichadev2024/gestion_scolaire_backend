@@ -19,6 +19,9 @@ public class BulletinResponse {
     private String eleveMatricule;
     private Long classeId;
     private String classeNom;
+    /** En-tête officiel de l'école (facultatifs) : rive et CAP. */
+    private String etablissementRive;
+    private String etablissementCap;
     private String periode;
     private String anneeScolaire;
     private Double moyenneGenerale;

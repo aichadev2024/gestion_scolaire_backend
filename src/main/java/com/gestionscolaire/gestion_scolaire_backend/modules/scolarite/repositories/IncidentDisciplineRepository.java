@@ -9,4 +9,5 @@ import java.util.List;
 public interface IncidentDisciplineRepository extends JpaRepository<IncidentDiscipline, Long> {
     List<IncidentDiscipline> findByEleveIdOrderByDateDescHeureDesc(Long eleveId);
     List<IncidentDiscipline> findByClasseIdAndDate(Long classeId, LocalDate date);
+    List<IncidentDiscipline> findByEtablissementIdAndDateBetween(Long etablissementId, LocalDate debut, LocalDate fin);
 }
